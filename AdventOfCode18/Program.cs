@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace AdventOfCode18
 {
@@ -14,11 +15,11 @@ namespace AdventOfCode18
         {
             try
             {
-                using (StreamReader sr = new StreamReader("../../../D4.txt"))
+                using (StreamReader sr = new StreamReader("../../../D5.txt"))
                 {
                     Stopwatch sw = new Stopwatch();
                     sw.Start();
-                    var answer = Day4(sr.ReadToEnd());
+                    var answer = Day5(sr.ReadToEnd());
                     sw.Stop();
                     Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
                 }
@@ -135,7 +136,7 @@ namespace AdventOfCode18
                 }).OrderBy(x => x.date).ToList();
             var currID = records[0].id.Value;
             var sleepSchedule = new Dictionary<int, int[]>();
-            for (int i = 0, rCount = records.Count-1; i < rCount; i++)
+            for (int i = 0, rCount = records.Count - 1; i < rCount; i++)
             {
                 if (records[i + 1].id != null)
                 {
@@ -161,5 +162,25 @@ namespace AdventOfCode18
             int p2 = sleepiestGuard.Key * sleepSchedule[sleepiestGuard.Key].ToList().IndexOf(sleepiestGuard.Value.Max());
             return new Tuple<int, int>(p1, p2);
         } // 0.011s
+
+        private static Tuple<int, int> Day5(string input)
+        {
+            int react(string l)
+            {
+                for (int i = 0; i < l.Length - 1;)
+                {
+                    if (l[i] != l[i+1] && l[i].ToString().Equals(l[i+1].ToString(), StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        l = l.Remove(i, 2);
+                        i = Math.Max(0, i - 1);
+                    } else i++;
+                }
+                return l.Length;
+            }
+            var results = new Dictionary<string, int> {{ "", react(input) }};
+            foreach (string letter in input.Select(c => c.ToString().ToLower()).Distinct().ToList())
+                results.Add(letter, react(input.Replace(letter, "").Replace(letter.ToUpper(), "")));
+            return new Tuple<int, int>(results[""], results.Values.Min());
+        } // 3.218s
     }
 }
