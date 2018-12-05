@@ -14,26 +14,25 @@ namespace AdventOfCode18
         {
             try
             {
-                using (StreamReader sr = new StreamReader("../../../D3.txt"))
+                using (StreamReader sr = new StreamReader("../../../D4.txt"))
                 {
                     Stopwatch sw = new Stopwatch();
                     sw.Start();
-                    var answer = Day3(sr.ReadToEnd());
+                    var answer = Day4(sr.ReadToEnd());
                     sw.Stop();
                     Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("The file could not be read: " + e.Message);
+                Console.WriteLine("Exception occured: " + e);
             }
         }
 
         private static Tuple<int, int> Day1(string input)
         {
             var frequencies = input.Split(Environment.NewLine).ToList().Select(d => int.Parse(d.Substring(1)) * (d.First().Equals('-') ? -1 : 1));
-            int p1 = frequencies.Sum();
-            int p2 = 0;
+            int p1 = frequencies.Sum(), p2 = 0;
             var previousFreqs = new List<int>();
             while (true)
             {
@@ -90,35 +89,77 @@ namespace AdventOfCode18
 
         private static Tuple<int, int> Day3(string input)
         {
-            var lines = input.Split(Environment.NewLine).ToList().Select(d => new List<string>(new string[] { d.Split(" ").First() }).Concat(d.Split(" ").TakeLast(2)));
+            var claims = input.Split(Environment.NewLine).ToList().Select(d => new List<string>(d.Split(" ")));
             var fabric = new Dictionary<Tuple<int, int>, List<int>>();
             int counter = 0;
-            var indices = new List<int>();
-            foreach (var line in lines)
+            var ids = new List<int>();
+            foreach (var claim in claims)
             {
-                var idx = int.Parse(line.First().Remove(0, 1));
-                indices.Add(idx);
-                var offset = line.Skip(1).First().Remove(line.Skip(1).First().Length - 1).Split(",").Select(d => int.Parse(d));
-                var size = line.Last().Split("x").Select(d => int.Parse(d));
-                for (int i = offset.First(); i < offset.First() + size.First(); i++)
+                var id = int.Parse(claim.First().Remove(0, 1));
+                ids.Add(id);
+                var offset = claim.Skip(2).First().Remove(claim.Skip(2).First().Length - 1).Split(",").Select(d => int.Parse(d));
+                var size = claim.Last().Split("x").Select(d => int.Parse(d));
+                for (int i = offset.First(), l1 = offset.First() + size.First(); i < l1; i++)
                 {
-                    for (int j = offset.Last(); j < offset.Last() + size.Last(); j++)
+                    for (int j = offset.Last(), l2 = offset.Last() + size.Last(); j < l2; j++)
                     {
                         var currPos = new Tuple<int, int>(i, j);
                         if (fabric.ContainsKey(currPos))
                         {
-                            if (fabric[currPos][1] == 1)
+                            if (fabric[currPos][1]++ == 1)
+                            {
+                                ids.Remove(fabric[currPos][0]);
                                 counter++;
-                            fabric[currPos][1]++;
-                            indices.Remove(idx);
-                            indices.Remove(fabric[currPos][0]);
+                            }
+                            ids.Remove(id);
                         }
                         else
-                            fabric.Add(currPos, new List<int>(new int[] { idx, 1 }));
+                            fabric.Add(currPos, new List<int>(new int[] { id, 1 }));
                     }
                 }
             }
-            return new Tuple<int, int>(counter, indices.First());
-        } // 1.109s
+            return new Tuple<int, int>(counter, ids.First());
+        } // 0.932s
+
+        private static Tuple<int, int> Day4(string input)
+        {
+            var records = input.Split(Environment.NewLine).ToList().Select(d => d.Replace("[", "").Replace("]", "").Split(" "))
+                .Select(d =>
+                {
+                    return new
+                    {
+                        date = DateTime.Parse(d[0] + " " + d[1]),
+                        id = d[2].Equals("Guard") ? int.Parse(d[3].Substring(1)) : (int?)null,
+                        sleeping = d[3].Equals("asleep")
+                    };
+                }).OrderBy(x => x.date).ToList();
+            var currID = records[0].id.Value;
+            var sleepSchedule = new Dictionary<int, int[]>();
+            for (int i = 0, rCount = records.Count-1; i < rCount; i++)
+            {
+                if (records[i + 1].id != null)
+                {
+                    currID = records[i + 1].id.Value;
+                    continue;
+                }
+                if (!sleepSchedule.ContainsKey(currID))
+                    sleepSchedule.Add(currID, new int[60]);
+                if (records[i].sleeping)
+                {
+                    var minutes = (records[i + 1].date - records[i].date).Minutes;
+                    for (int j = 0; j < minutes; j++)
+                    {
+                        var startSleeping = records[i].date.Minute;
+                        sleepSchedule[currID][(startSleeping + j) % 60]++;
+                    }
+                }
+            }
+            int mostSleepyID = sleepSchedule.Aggregate((l, r) => l.Value.Sum() > r.Value.Sum() ? l : r).Key;
+            int sleepiestMinute = sleepSchedule[mostSleepyID].ToList().IndexOf(sleepSchedule[mostSleepyID].Max());
+            int p1 = mostSleepyID * sleepiestMinute;
+            var sleepiestGuard = sleepSchedule.Aggregate((l, r) => l.Value.Max() > r.Value.Max() ? l : r);
+            int p2 = sleepiestGuard.Key * sleepSchedule[sleepiestGuard.Key].ToList().IndexOf(sleepiestGuard.Value.Max());
+            return new Tuple<int, int>(p1, p2);
+        } // 0.011s
     }
 }
