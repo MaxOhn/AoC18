@@ -1,4 +1,5 @@
 ﻿
+using MathNet.Numerics.LinearAlgebra;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,20 +14,13 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            try
+            using (StreamReader sr = new StreamReader("../../../D7.txt"))
             {
-                using (StreamReader sr = new StreamReader("../../../D5.txt"))
-                {
-                    Stopwatch sw = new Stopwatch();
-                    sw.Start();
-                    var answer = Day5(sr.ReadToEnd());
-                    sw.Stop();
-                    Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Exception occured: " + e);
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                var answer = Day7(sr.ReadToEnd());
+                sw.Stop();
+                Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
         }
 
@@ -169,18 +163,108 @@ namespace AdventOfCode18
             {
                 for (int i = 0; i < l.Length - 1;)
                 {
-                    if (l[i] != l[i+1] && l[i].ToString().Equals(l[i+1].ToString(), StringComparison.InvariantCultureIgnoreCase))
+                    if (l[i] != l[i + 1] && l[i].ToString().Equals(l[i + 1].ToString(), StringComparison.InvariantCultureIgnoreCase))
                     {
                         l = l.Remove(i, 2);
                         i = Math.Max(0, i - 1);
-                    } else i++;
+                    }
+                    else i++;
                 }
                 return l.Length;
             }
-            var results = new Dictionary<string, int> {{ "", react(input) }};
+            var results = new Dictionary<string, int> { { "", react(input) } };
             foreach (string letter in input.Select(c => c.ToString().ToLower()).Distinct().ToList())
                 results.Add(letter, react(input.Replace(letter, "").Replace(letter.ToUpper(), "")));
             return new Tuple<int, int>(results[""], results.Values.Min());
         } // 3.218s
+
+        private static Tuple<int, int> Day6(string input)
+        {
+            var coords = input
+                .Split(Environment.NewLine)
+                .Select(line => line.Split(", ")
+                    .Select(num => Convert.ToInt32(num))
+                    .ToArray())
+                .Select(l => (x: l[0], y: l[1])).ToArray();
+            int rows = coords.Max(c => c.x), cols = coords.Max(c => c.y), safeCount = 0;
+            var grid = new int[rows + 2, cols + 2];
+            var excludeBorder = new List<int>();
+            var counts = Enumerable.Range(-1, coords.Length + 1).ToDictionary(i => i, _ => 0);
+            for (int x = 0; x <= rows + 1; x++)
+            {
+                for (int y = 0; y <= cols + 1; y++)
+                {
+                    var distances = coords
+                        .Select((c, i) => (i, dist: Math.Abs(c.x - x) + Math.Abs(c.y - y)))
+                        .OrderBy(c => c.dist)
+                        .ToArray();
+                    grid[x, y] = distances[1].dist != distances[0].dist ? distances[0].i : -1;
+                    if (distances.Sum(c => c.dist) < 10000)
+                        safeCount++;
+                    if (x == 0 || y == 0 || x == rows + 1 || y == cols + 1)
+                        excludeBorder.Add(grid[x, y]);
+                    counts[grid[x, y]] += 1;
+                }
+            }
+            excludeBorder = excludeBorder.Distinct().ToList();
+            var p1 = counts
+                .Where(pair => !excludeBorder.Contains(pair.Key))
+                .OrderByDescending(pair => pair.Value)
+                .ElementAt(0)
+                .Value;
+            return new Tuple<int, int>(p1, safeCount);
+        } // 0.761s
+
+        private static Tuple<string, int> Day7(string input)
+        {
+            var req = input
+                .Split(Environment.NewLine)
+                .Select(l => (pre: l[5] + "", post: l[36] + ""))
+                .ToList();
+            var letters = req
+                .Select(s => new HashSet<string> { s.pre, s.post })
+                .Aggregate((l, r) => l.Union(r).ToHashSet())
+                .OrderBy(l => l)
+                .ToList();
+            var assigned = new List<string>();
+            while (assigned.Count != letters.Count)
+            {
+                foreach (var l in letters)
+                {
+                    if (assigned.Contains(l))
+                        continue;
+                    var dependencies = req
+                        .Where(s => s.post == l)
+                        .Select(s => s.pre)
+                        .ToList();
+                    if (!dependencies.Except(assigned).Any())
+                    {
+                        assigned.Add(l);
+                        break;
+                    }
+                }
+            }
+            var workers = new List<int>(5) { 0, 0, 0, 0, 0 };
+            var counter = 0;
+            var finishing = new List<(string s, int done)>();
+            while (letters.Any() || workers.Any(w => w > counter))
+            {
+                finishing.Where(d => d.done <= counter).ToList().ForEach(x => req.RemoveAll(d => d.pre == x.s));
+                finishing.RemoveAll(d => d.done <= counter);
+                var firstFree = letters.Where(s => !req.Any(d => d.post == s)).ToList();
+                for (var w = 0; w < workers.Count && firstFree.Any(); w++)
+                {
+                    if (workers[w] <= counter)
+                    {
+                        workers[w] = (firstFree.First()[0] - 'A') + 61 + counter;
+                        letters.Remove(firstFree.First());
+                        finishing.Add((firstFree.First(), workers[w]));
+                        firstFree.RemoveAt(0);
+                    }
+                }
+                counter++;
+            }
+            return new Tuple<string, int>(string.Join("", assigned), counter);
+        } // 0.029s
     }
 }
