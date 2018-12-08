@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D7.txt"))
+            using (StreamReader sr = new StreamReader("../../../D8.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day7(sr.ReadToEnd());
+                var answer = Day8(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -266,5 +266,50 @@ namespace AdventOfCode18
             }
             return new Tuple<string, int>(string.Join("", assigned), counter);
         } // 0.029s
+
+        private static Tuple<int, int> Day8(string input)
+        {
+            var numbers = input.Split(" ").Select(d =>int.Parse(d)).ToList();
+            var childs = new Dictionary<int, List<int>>();
+            var metas = new Dictionary<int, List<int>>();
+            (int, int) processNode(int idx, int name)
+            {
+                int currIdx = idx, currName = name, amountChildren = numbers[currIdx], amountMeta = numbers[currIdx+1];
+                var children = new List<int>();
+                currIdx += 2;
+                currName += 1;
+                for (int j = 0; j < amountChildren; j++)
+                {
+                    children.Add(currName);
+                    var childOutput = processNode(currIdx, currName);
+                    currIdx = childOutput.Item1;
+                    currName = childOutput.Item2;
+                }
+                var meta = currIdx + amountMeta > numbers.Count ? numbers.TakeLast(amountMeta).ToList() : numbers.GetRange(currIdx, amountMeta).ToList();
+                childs.Add(name, children);
+                metas.Add(name, meta);
+                return (currIdx +  amountMeta, currName);
+            }
+            processNode(0, 0);
+            int p1 = metas.Values.Select(list => list.Sum()).Sum();
+            int nodeValue(int n)
+            {
+                if (childs[n].Count == 0)
+                    return metas[n].Sum();
+                else
+                {
+                    int sum = 0;
+                    foreach (var m in metas[n])
+                    {
+                        if (m == 0)
+                            continue;
+                        if (m <= childs[n].Count)
+                            sum += nodeValue(childs[n][m-1]);
+                    }
+                    return sum;
+                }
+            }
+            return new Tuple<int, int>(p1, nodeValue(0));
+        } // 0.0107s
     }
 }
