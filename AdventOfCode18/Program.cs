@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D9.txt"))
+            using (StreamReader sr = new StreamReader("../../../D10.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day9(sr.ReadToEnd());
+                var answer = Day10(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -321,13 +321,44 @@ namespace AdventOfCode18
                     }
                     else
                         curr = marbles.AddAfter(curr.Next ?? marbles.First, i);
-                    //playerIdx = (playerIdx + 1) % playerCount;
-                    if (++playerIdx == playerCount)
-                        playerIdx = 0;
+                    playerIdx = (playerIdx + 1) % playerCount;
                 }
                 return players.Max();
             }
-            return (play(marbleCount), play(marbleCount*100));
+            return (play(marbleCount), play(marbleCount * 100));
         } // 1.18s
+
+        private static int Day10(string input)
+        {
+            var pos = input.Split(Environment.NewLine)
+                .Select((d, i) => ( i, new int[2] { int.Parse(d.Substring(10, 6)), int.Parse(d.Substring(18, 6)) }))
+                .ToDictionary(v => v.i, v => v.Item2);
+            var vel = input.Split(Environment.NewLine)
+                .Select((d, i) => ( i, new int[2] { int.Parse(d.Substring(36, 2)), int.Parse(d.Substring(40, 2)) }))
+                .ToDictionary(v => v.i, v => v.Item2);
+            var grid = new int[10, 62];     // trial and error
+            for (int i = 0; i < 10634; i++) // trial and error
+            {
+                foreach (var p in pos.Keys)
+                {
+                    pos[p][0] += vel[p][0];
+                    pos[p][1] += vel[p][1];
+                }
+            }
+            int minR = pos.Select(p => p.Value[0]).Min(), minC = pos.Select(p => p.Value[1]).Min();
+            foreach (var p in pos.Keys)
+            {
+                pos[p][0] -= minR;
+                pos[p][1] -= minC;
+                grid[pos[p][1], pos[p][0]] = 1;
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                for (int j = 0; j < 62; j++)
+                    Console.Write(string.Format("{0} ", grid[i, j]));
+                Console.WriteLine("");
+            }
+            return 10634;
+        } // 0.17s
     }
 }
