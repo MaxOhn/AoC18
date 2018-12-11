@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D10.txt"))
+            using (StreamReader sr = new StreamReader("../../../D11.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day10(sr.ReadToEnd());
+                var answer = Day11(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -331,12 +331,11 @@ namespace AdventOfCode18
         private static int Day10(string input)
         {
             var pos = input.Split(Environment.NewLine)
-                .Select((d, i) => ( i, new int[2] { int.Parse(d.Substring(10, 6)), int.Parse(d.Substring(18, 6)) }))
+                .Select((d, i) => (i, new int[2] { int.Parse(d.Substring(10, 6)), int.Parse(d.Substring(18, 6)) }))
                 .ToDictionary(v => v.i, v => v.Item2);
             var vel = input.Split(Environment.NewLine)
-                .Select((d, i) => ( i, new int[2] { int.Parse(d.Substring(36, 2)), int.Parse(d.Substring(40, 2)) }))
+                .Select((d, i) => (i, new int[2] { int.Parse(d.Substring(36, 2)), int.Parse(d.Substring(40, 2)) }))
                 .ToDictionary(v => v.i, v => v.Item2);
-            var grid = new int[10, 62];     // trial and error
             for (int i = 0; i < 10634; i++) // trial and error
             {
                 foreach (var p in pos.Keys)
@@ -346,6 +345,7 @@ namespace AdventOfCode18
                 }
             }
             int minR = pos.Select(p => p.Value[0]).Min(), minC = pos.Select(p => p.Value[1]).Min();
+            var grid = new int[10, 62];     // trial and error
             foreach (var p in pos.Keys)
             {
                 pos[p][0] -= minR;
@@ -355,10 +355,58 @@ namespace AdventOfCode18
             for (int i = 0; i < 10; i++)
             {
                 for (int j = 0; j < 62; j++)
-                    Console.Write(string.Format("{0} ", grid[i, j]));
+                    Console.Write(grid[i, j]);
                 Console.WriteLine("");
             }
             return 10634;
         } // 0.17s
+
+        private static (string, string) Day11(string input)
+        {
+            var serialNumber = int.Parse(input);
+            var grid = new int[300][];
+            for (int x = 0; x < 300; x++)
+                grid[x] = Enumerable.Range(0, 300)
+                    .Select(y => ((((x + 11) * (y + 1) + serialNumber) * (x + 11) / 100) % 10) - 5)
+                    .ToArray();
+            int subgridSum(int x, int y, int size)
+            {
+                int sum = 0;
+                for (int i = 0; i < size; i++)
+                    for (int j = 0; j < size; j++)
+                        sum += grid[x + i][y + j];
+                return sum;
+            }
+            int mS = 0, mX = 0, mY = 0, s = 3, mSize = 0;
+            for (int x = 0; x < 297; x++)
+            {
+                for (int y = 0; y < 297; y++)
+                {
+                    var sum = subgridSum(x, y, s);
+                    if (sum > mS)
+                    {
+                        mS = sum;
+                        mX = x;
+                        mY = y;
+                    }
+                }
+            }
+            (mS, mX, mY, s) = (0, 0, 0, 1);
+            for (; s < 300; s++) {
+                for (int x = 0; x < 300-s; x++) {
+                    for (int y = 0; y < 300-s; y++) {
+                        var sum = subgridSum(x, y, s);
+                        if (sum > mS)
+                        {
+                            mS = sum;
+                            mX = x;
+                            mY = y;
+                            mSize = s;
+                        }
+                    }
+                }
+            }
+            return ("(" + mX+1 + "," + (mY+1) + ")", "(" + mX + 1 + "," + (mY + 1) + "," + mSize + ")");
+        }
     }
 }
