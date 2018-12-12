@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D11.txt"))
+            using (StreamReader sr = new StreamReader("../../../D03.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day11(sr.ReadToEnd());
+                var answer = Day3(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -82,23 +82,33 @@ namespace AdventOfCode18
             return null;
         } // 0.0155s
 
-        private static Tuple<int, int> Day3(string input)
+        private static (int, int) Day3(string input)
         {
-            var claims = input.Split(Environment.NewLine).ToList().Select(d => new List<string>(d.Split(" ")));
-            var fabric = new Dictionary<Tuple<int, int>, List<int>>();
+            var claims = input
+                .Split(Environment.NewLine)
+                .Select(d => d.Split(" "));
+            var fabric = new Dictionary<(int, int), int[]>();
             int counter = 0;
             var ids = new List<int>();
             foreach (var claim in claims)
             {
                 var id = int.Parse(claim.First().Remove(0, 1));
                 ids.Add(id);
-                var offset = claim.Skip(2).First().Remove(claim.Skip(2).First().Length - 1).Split(",").Select(d => int.Parse(d));
-                var size = claim.Last().Split("x").Select(d => int.Parse(d));
+                var offset = claim
+                    .Skip(2)
+                    .First()
+                    .Remove(claim.Skip(2).First().Length - 1)
+                    .Split(",")
+                    .Select(d => int.Parse(d));
+                var size = claim
+                    .Last()
+                    .Split("x")
+                    .Select(d => int.Parse(d));
                 for (int i = offset.First(), l1 = offset.First() + size.First(); i < l1; i++)
                 {
                     for (int j = offset.Last(), l2 = offset.Last() + size.Last(); j < l2; j++)
                     {
-                        var currPos = new Tuple<int, int>(i, j);
+                        var currPos = (i, j);
                         if (fabric.ContainsKey(currPos))
                         {
                             if (fabric[currPos][1]++ == 1)
@@ -109,12 +119,12 @@ namespace AdventOfCode18
                             ids.Remove(id);
                         }
                         else
-                            fabric.Add(currPos, new List<int>(new int[] { id, 1 }));
+                            fabric.Add(currPos, new int[] { id, 1 });
                     }
                 }
             }
-            return new Tuple<int, int>(counter, ids.First());
-        } // 0.932s
+            return (counter, ids.First());
+        } // 0.162s
 
         private static Tuple<int, int> Day4(string input)
         {
