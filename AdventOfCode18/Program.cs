@@ -367,46 +367,38 @@ namespace AdventOfCode18
             var grid = new int[300][];
             for (int x = 0; x < 300; x++)
                 grid[x] = Enumerable.Range(0, 300)
-                    .Select(y => ((((x + 11) * (y + 1) + serialNumber) * (x + 11) / 100) % 10) - 5)
+                    .Select(y => (((x + 11) * (y + 1) + serialNumber) * (x + 11) / 100 % 10) - 5)
                     .ToArray();
+            var maxSums = new int[300][];
+            for (int i = 0; i < 300; i++)
+                Array.Copy(grid[i], 0, maxSums[i] = new int[300], 0, 300);
             int subgridSum(int x, int y, int size)
             {
-                int sum = 0;
+                int outSum = 0;
                 for (int i = 0; i < size; i++)
                     for (int j = 0; j < size; j++)
-                        sum += grid[x + i][y + j];
-                return sum;
+                        outSum += grid[x + i][y + j];
+                return outSum;
             }
-            int mS = 0, mX = 0, mY = 0, s = 3, mSize = 0;
-            for (int x = 0; x < 297; x++)
+            int addNextCells(int x, int y, int s)
             {
-                for (int y = 0; y < 297; y++)
-                {
-                    var sum = subgridSum(x, y, s);
-                    if (sum > mS)
-                    {
-                        mS = sum;
-                        mX = x;
-                        mY = y;
-                    }
-                }
+                int addedSum = 0;
+                for (int i = 0; i < s; i++)
+                    addedSum += grid[x + s - 1][y + i] + grid[x + i][y + s - 1];
+                return addedSum + maxSums[x][y] - grid[x + s - 1][y + s - 1];
             }
-            (mS, mX, mY, s) = (0, 0, 0, 1);
-            for (; s < 300; s++) {
-                for (int x = 0; x < 300-s; x++) {
-                    for (int y = 0; y < 300-s; y++) {
-                        var sum = subgridSum(x, y, s);
-                        if (sum > mS)
-                        {
-                            mS = sum;
-                            mX = x;
-                            mY = y;
-                            mSize = s;
-                        }
-                    }
-                }
-            }
-            return ("(" + mX+1 + "," + (mY+1) + ")", "(" + mX + 1 + "," + (mY + 1) + "," + mSize + ")");
-        }
+            int mX = 0, mY = 0, mS = 0, mSum = 0, p1x = 0, p1y = 0;
+            for (int x = 0; x < 300 - 3; x++)
+                for (int y = 0; y < 300 - 3; y++)
+                    if ((mSum = subgridSum(x, y, 3)) > mS)
+                        (mS, mX, mY) = (mSum, x, y);
+            (mX, mY, mS, mSum, p1x, p1y) = (0, 0, 0, 0, mX, mY);
+            for (int size = 2; size < 300; size++)
+                for (int x = 0; x < 300-size; x++)
+                    for (int y = 0; y < 300-size; y++)
+                        if ((maxSums[x][y] = addNextCells(x, y, size)) > mSum)
+                            (mX, mY, mS, mSum) = (x, y, size, maxSums[x][y]);
+            return ("(" + (p1x+1) + "," + (p1y+1) + ")", "(" + (mX + 1) + "," + (mY + 1) + "," + mS + ")");
+        } // 1.103s
     }
 }
