@@ -1,12 +1,11 @@
 ﻿
-using MathNet.Numerics.LinearAlgebra;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace AdventOfCode18
 {
@@ -14,27 +13,29 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D03.txt"))
+            using (StreamReader sr = new StreamReader("../../../D13.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day3(sr.ReadToEnd());
+                var answer = Day13(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
         }
 
-        private static Tuple<int, int> Day1(string input)
+        private static (int, int) Day1(string input)
         {
-            var frequencies = input.Split(Environment.NewLine).ToList().Select(d => int.Parse(d.Substring(1)) * (d.First().Equals('-') ? -1 : 1));
-            int p1 = frequencies.Sum(), p2 = 0;
+            var frequencies = input
+                .Split(Environment.NewLine)
+                .Select(d => int.Parse(d));
+            int p2 = 0;
             var previousFreqs = new List<int>();
             while (true)
             {
                 foreach (int f in frequencies)
                 {
                     if (previousFreqs.Contains(p2))
-                        return Tuple.Create(p1, p2);
+                        return (frequencies.Sum(), p2);
                     previousFreqs.Add(p2);
                     p2 += f;
                 }
@@ -43,7 +44,9 @@ namespace AdventOfCode18
 
         private static Tuple<int, string> Day2(string input)
         {
-            var boxIDs = input.Split(Environment.NewLine).ToList();
+            var boxIDs = input
+                .Split(Environment.NewLine)
+                .ToList();
             int twice = 0, thrice = 0;
             var charOccurences = new Dictionary<char, int>();
             foreach (string boxID in boxIDs)
@@ -87,7 +90,7 @@ namespace AdventOfCode18
             var claims = input
                 .Split(Environment.NewLine)
                 .Select(d => d.Split(" "));
-            var fabric = new Dictionary<(int, int), int[]>();
+            var fabric = new Dictionary<(int, int), int>();
             int counter = 0;
             var ids = new List<int>();
             foreach (var claim in claims)
@@ -111,15 +114,16 @@ namespace AdventOfCode18
                         var currPos = (i, j);
                         if (fabric.ContainsKey(currPos))
                         {
-                            if (fabric[currPos][1]++ == 1)
+                            if (fabric[currPos] != -1)
                             {
-                                ids.Remove(fabric[currPos][0]);
+                                ids.Remove(fabric[currPos]);
+                                fabric[currPos] = -1;
                                 counter++;
                             }
                             ids.Remove(id);
                         }
                         else
-                            fabric.Add(currPos, new int[] { id, 1 });
+                            fabric.Add(currPos, id);
                     }
                 }
             }
@@ -128,7 +132,7 @@ namespace AdventOfCode18
 
         private static Tuple<int, int> Day4(string input)
         {
-            var records = input.Split(Environment.NewLine).ToList().Select(d => d.Replace("[", "").Replace("]", "").Split(" "))
+            var records = input.Split(Environment.NewLine).Select(d => d.Replace("[", "").Replace("]", "").Split(" "))
                 .Select(d =>
                 {
                     return new
@@ -137,7 +141,8 @@ namespace AdventOfCode18
                         id = d[2].Equals("Guard") ? int.Parse(d[3].Substring(1)) : (int?)null,
                         sleeping = d[3].Equals("asleep")
                     };
-                }).OrderBy(x => x.date).ToList();
+                })
+                .OrderBy(x => x.date).ToList();
             var currID = records[0].id.Value;
             var sleepSchedule = new Dictionary<int, int[]>();
             for (int i = 0, rCount = records.Count - 1; i < rCount; i++)
@@ -167,7 +172,7 @@ namespace AdventOfCode18
             return new Tuple<int, int>(p1, p2);
         } // 0.011s
 
-        private static Tuple<int, int> Day5(string input)
+        private static (int, int) Day5(string input)
         {
             int react(string l)
             {
@@ -183,9 +188,9 @@ namespace AdventOfCode18
                 return l.Length;
             }
             var results = new Dictionary<string, int> { { "", react(input) } };
-            foreach (string letter in input.Select(c => c.ToString().ToLower()).Distinct().ToList())
+            foreach (string letter in input.Select(c => c.ToString().ToLower()).Distinct())
                 results.Add(letter, react(input.Replace(letter, "").Replace(letter.ToUpper(), "")));
-            return new Tuple<int, int>(results[""], results.Values.Min());
+            return (results[""], results.Values.Min());
         } // 3.218s
 
         private static Tuple<int, int> Day6(string input)
@@ -195,7 +200,8 @@ namespace AdventOfCode18
                 .Select(line => line.Split(", ")
                     .Select(num => Convert.ToInt32(num))
                     .ToArray())
-                .Select(l => (x: l[0], y: l[1])).ToArray();
+                .Select(l => (x: l[0], y: l[1]))
+                .ToArray();
             int rows = coords.Max(c => c.x), cols = coords.Max(c => c.y), safeCount = 0;
             var grid = new int[rows + 2, cols + 2];
             var excludeBorder = new List<int>();
@@ -279,7 +285,9 @@ namespace AdventOfCode18
 
         private static (int, int) Day8(string input)
         {
-            var numbers = input.Split(" ").Select(d => int.Parse(d)).ToList();
+            var numbers = input
+                .Split(" ")
+                .Select(d => int.Parse(d)).ToList();
             var nodes = new Dictionary<int, (List<int> childs, List<int> metas)>();
             (int, int) processNode(int idx, int name)
             {
@@ -289,9 +297,7 @@ namespace AdventOfCode18
                 for (int j = 0; j < amountChildren; j++)
                 {
                     children.Add(currName);
-                    var childOutput = processNode(currIdx, currName);
-                    currIdx = childOutput.Item1;
-                    currName = childOutput.Item2;
+                    (currIdx, currName) = processNode(currIdx, currName);
                 }
                 nodes.Add(name, (children, numbers.GetRange(currIdx, currIdx + amountMeta > numbers.Count ? amountMeta - 1 : amountMeta).ToList()));
                 return (currIdx + amountMeta, currName);
@@ -410,5 +416,162 @@ namespace AdventOfCode18
                             (mX, mY, mS, mSum) = (x, y, size, maxSums[x][y]);
             return ("(" + (p1x+1) + "," + (p1y+1) + ")", "(" + (mX + 1) + "," + (mY + 1) + "," + mS + ")");
         } // 1.103s
+
+        private static (long, long) Day12(string input)     // screw this stupid puzzle
+        {
+            var InputSplit = input
+                .Split(Environment.NewLine);
+            var rules = InputSplit
+                .Skip(2)
+                .Select(d => d.Split(" => "))
+                .ToDictionary(r => r[0], r => r[1]);
+            long run(long maxGens)
+            {
+                string currGen = InputSplit[0].Substring(15);
+                int currLeft = 0;
+                long score = 0, lastScore = 0, diff = 0, prevDiff = 0;
+                for (long gen = 1; gen <= maxGens; gen++)
+                {
+                    StringBuilder nextGen = new StringBuilder();
+                    for (int pos = -2; pos < currGen.Length + 2; pos++)
+                    {
+                        string state = string.Empty;
+                        int distFromEnd = currGen.Length - pos;
+                        if (pos <= 1)
+                            state = new string('.', 2 - pos) + currGen.Substring(0, 3 + pos);
+                        else if (distFromEnd <= 2)
+                            state = currGen.Substring(pos - 2, distFromEnd + 2) + new string('.', 3 - distFromEnd);
+                        else
+                            state = currGen.Substring(pos - 2, 5);
+                        nextGen.Append(rules.TryGetValue(state, out string newState) ? newState : ".");
+                    }
+                    (currGen, currLeft, score) = (nextGen.ToString(), currLeft - 2, 0);
+                    for (int pos = 0; pos < currGen.Length; pos++)
+                        score += currGen[pos].ToString() == "." ? 0 : pos + currLeft;
+                    diff = score - lastScore;
+                    if (diff == prevDiff)
+                    {
+                        score += (maxGens - gen) * prevDiff;
+                        break;
+                    }
+                    (prevDiff, lastScore) = (diff, score);
+                }
+                return score;
+            }
+            return (run(20), run(50000000000));
+        } // 0.0079s
+
+        public static (string, string) Day13(string input)
+        {
+            var lines = input
+                .Split(Environment.NewLine);
+            var maxLine = lines
+                .Max(x => x.Length);
+            var grid = new char[lines.Length, maxLine];
+            for (int i = 0; i < lines.Length; i++)
+                for (int j = 0; j < lines[i].Length; j++)
+                    grid[i, j] = lines[i][j];
+            var cartSymbols = new[] { '^', 'v', '>', '<' };
+            var carts = new List<(int x, int y, char dir, char turn, bool crashed)>();
+            for (int y = 0; y < lines.Length; y++)
+            {
+                for (int x = 0; x < lines[y].Length; x++)
+                {
+                    if (!cartSymbols.Contains(grid[y, x]))
+                        continue;
+                    carts.Add((x, y, grid[y, x], 'l', false));
+                    if (grid[y, x] == '^' || grid[y, x] == 'v')
+                        grid[y, x] = '|';
+                    else
+                        grid[y, x] = '-';
+                }
+            }
+            var turns = new Dictionary<(char dir, char gridSymbol), char>
+            {
+                { ('<', '/'), 'v' },
+                { ('^', '/'), '>' },
+                { ('>', '/'), '^' },
+                { ('v', '/'), '<' },
+                { ('<', '\\'), '^' },
+                { ('^', '\\'), '<' },
+                { ('>', '\\'), 'v' },
+                { ('v', '\\'), '>' },
+            };
+            var intersections = new Dictionary<(char dir, char turn), (char dir, char turn)>
+            {
+                { ('<', 'l'), ('v', 's') },
+                { ('<', 's'), ('<', 'r') },
+                { ('<', 'r'), ('^', 'l') },
+                { ('^', 'l'), ('<', 's') },
+                { ('^', 's'), ('^', 'r') },
+                { ('^', 'r'), ('>', 'l') },
+                { ('>', 'l'), ('^', 's') },
+                { ('>', 's'), ('>', 'r') },
+                { ('>', 'r'), ('v', 'l') },
+                { ('v', 'l'), ('>', 's') },
+                { ('v', 's'), ('v', 'r') },
+                { ('v', 'r'), ('<', 'l') },
+            };
+            (int x, int y) NextPos(int x, int y, char dir)
+            {
+                switch (dir)
+                {
+                    case '^':
+                        return (x, y - 1);
+                    case 'v':
+                        return (x, y + 1);
+                    case '>':
+                        return (x + 1, y);
+                    case '<':
+                        return (x - 1, y);
+                }
+                throw new ArgumentException();
+            }
+            string p1 = "";
+            string p2 = "";
+            while (p2.Equals(""))
+            {
+                var orderedCarts = carts
+                    .OrderBy(x => x.y)
+                    .ThenBy(x => x.x)
+                    .ToList();
+                for (var i = 0; i < orderedCarts.Count; i++)
+                {
+                    var cart = orderedCarts[i];
+                    if (cart.crashed)
+                        continue;
+                    var (x, y) = NextPos(cart.x, cart.y, cart.dir);
+                    if (p1.Equals("") && orderedCarts.Any(c => c.x == x && c.y == y))
+                        p1 = (x, y).ToString();
+                    var crashedCartIndex = orderedCarts
+                        .FindIndex(c => !c.crashed && c.x == x && c.y == y);
+                    if (crashedCartIndex >= 0)
+                    {
+                        Console.WriteLine($"crash at ({x},{y})");
+                        orderedCarts[i] = (x, y, cart.dir, cart.turn, true);
+                        orderedCarts[crashedCartIndex] = (x, y, cart.dir, cart.turn, true);
+                        continue;
+                    }
+                    var gridSymbol = grid[y, x];
+                    if (gridSymbol == '\\' || gridSymbol == '/')
+                        orderedCarts[i] = (x, y, turns[(cart.dir, gridSymbol)], cart.turn, cart.crashed);
+                    else if (gridSymbol == '+')
+                    {
+                        var (dir, turn) = intersections[(cart.dir, cart.turn)];
+                        orderedCarts[i] = (x, y, dir, turn, cart.crashed);
+                    }
+                    else
+                        orderedCarts[i] = (x, y, cart.dir, cart.turn, cart.crashed);
+                }
+                carts = orderedCarts;
+                if (carts.Count(x => !x.crashed) == 1)
+                    p2 = carts
+                        .Where(c => !c.crashed)
+                        .Select(c => (c.x, c.y))
+                        .First()
+                        .ToString();
+            }
+            return (p1, p2);
+        } // 0.049s
     }
 }
