@@ -577,38 +577,42 @@ namespace AdventOfCode18
         public static (string, int) Day14(string input)
         {
             var scoreboard = new List<int> { 3, 7 };
-            int inputNum = int.Parse(input), firstElfInd = 0, secondElfInd = 1;
+            int inputNum = int.Parse(input), firstElfIdx = 0, secondElfIdx = 1, windowIndex = 0, posCheck = 0;
             void step()
             {
-                foreach (var d in (scoreboard[firstElfInd] + scoreboard[secondElfInd]) + "")
-                    scoreboard.Add(int.Parse(d + ""));
-                firstElfInd = (firstElfInd + scoreboard[firstElfInd] + 1) % scoreboard.Count();
-                secondElfInd = (secondElfInd + scoreboard[secondElfInd] + 1) % scoreboard.Count();
+                if (scoreboard[firstElfIdx] + scoreboard[secondElfIdx] >= 10)
+                    scoreboard.Add(1);
+                scoreboard.Add((scoreboard[firstElfIdx] + scoreboard[secondElfIdx]) % 10);
+                firstElfIdx = (firstElfIdx + scoreboard[firstElfIdx] + 1) % scoreboard.Count();
+                secondElfIdx = (secondElfIdx + scoreboard[secondElfIdx] + 1) % scoreboard.Count();
             }
             while (scoreboard.Count() < inputNum + 10)
                 step();
-            string p1 = string.Join("", scoreboard.Skip(inputNum).Take(10));
-            scoreboard = new List<int> { 3, 7 };
-            (firstElfInd, secondElfInd) = (0, 1);
-            while (scoreboard.Count() < input.Length)
-                step();
-            var currWindow = new LinkedList<int>(scoreboard.TakeLast(input.Length));
-            bool done = false;
-            while (!done)
+            string p1 = string.Join("", scoreboard.TakeLast(10));
+            (scoreboard, firstElfIdx, secondElfIdx) = (new List<int> { 3, 7 }, 0, 1);
+            var inputList = input.Select(digit => digit - '0').ToList();
+            bool found = false;
+            while (!found)
             {
-                foreach (var d in (scoreboard[firstElfInd] + scoreboard[secondElfInd]) + "")
+                step();
+                while (windowIndex + posCheck < scoreboard.Count)
                 {
-                    var nextRec = int.Parse(d + "");
-                    scoreboard.Add(nextRec);
-                    currWindow.RemoveFirst();
-                    currWindow.AddLast(nextRec);
-                    if (done |= string.Join("", currWindow).Equals(input))
-                        break;
+                    if (inputList[posCheck] == scoreboard[windowIndex + posCheck])
+                    {
+                        if (posCheck++ == inputList.Count - 1)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        posCheck = 0;
+                        windowIndex++;
+                    }
                 }
-                firstElfInd = (firstElfInd + scoreboard[firstElfInd] + 1) % scoreboard.Count();
-                secondElfInd = (secondElfInd + scoreboard[secondElfInd] + 1) % scoreboard.Count();
             }
-            return (p1, scoreboard.Count() - input.Length);
-        } // 9.805s
+            return (p1, windowIndex);
+        } // 0.576s
     }
 }
