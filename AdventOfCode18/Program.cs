@@ -13,11 +13,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D14.txt"))
+            using (StreamReader sr = new StreamReader("../../../D16.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day14(sr.ReadToEnd());
+                var answer = Day16(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -614,5 +614,190 @@ namespace AdventOfCode18
             }
             return (p1, windowIndex);
         } // 0.576s
+
+        public static (int, int) Day16(string input)
+        {
+            var instructions = input
+                .Split(Environment.NewLine + Environment.NewLine + Environment.NewLine)[0]
+                .Split(Environment.NewLine)
+                .Where((instr, idx) => (idx + 1) % 4 != 0)
+                .Select((instr, idx) => new { instr, t = idx / 3 })
+                .GroupBy(p => p.t, p => p.instr)
+                .Select(instr => {
+                    var opinstrNums = instr.ElementAt(1).Split(" ").Select(num => int.Parse(num)).ToArray();
+                    return new
+                    {
+                        before = instr.ElementAt(0).Substring(9, 10).Split(", ").Select(num => int.Parse(num)).ToArray(),
+                        opinstr = new { category = opinstrNums[0], A = opinstrNums[1], B = opinstrNums[2], C = opinstrNums[3] },
+                        after = instr.ElementAt(2).Substring(9, 10).Split(", ").Select(num => int.Parse(num)).ToArray()
+                    };
+                });
+            int p1 = 0;
+            var opinstrDict = new Dictionary<int, (HashSet<int> possible, HashSet<int> impossible)>();
+            foreach (var instr in instructions)
+            {
+                int c = instr.opinstr.category, A = instr.opinstr.A, B = instr.opinstr.B, C = instr.opinstr.C;
+                var possibleCategories = new HashSet<int>();
+                var impossibleCategories = new HashSet<int>();
+                var changedOnlyC = Enumerable.Range(0, 4)
+                    .Where(i => i != C)
+                    .Any(i => instr.before[i] == instr.after[i]);
+                if (!changedOnlyC)
+                    continue;
+                if (A < 4 && B < 4 && instr.after[C] == instr.before[A] + instr.before[B])
+                    possibleCategories.Add(0);
+                else
+                    impossibleCategories.Add(0);
+                if (A < 4 && instr.after[C] == instr.before[A] + B)
+                    possibleCategories.Add(1);
+                else
+                    impossibleCategories.Add(1);
+                if (A < 4 && B < 4 && instr.after[C] == instr.before[A] * instr.before[B])
+                    possibleCategories.Add(2);
+                else
+                    impossibleCategories.Add(2);
+                if (A < 4 && instr.after[C] == instr.before[A] * B)
+                    possibleCategories.Add(3);
+                else
+                    impossibleCategories.Add(3);
+                if (A < 4 && B < 4 && instr.after[C] == (instr.before[A] & instr.before[B]))
+                    possibleCategories.Add(4);
+                else
+                    impossibleCategories.Add(4);
+                if (A < 4 && instr.after[C] == (instr.before[A] & B))
+                    possibleCategories.Add(5);
+                else
+                    impossibleCategories.Add(5);
+                if (A < 4 && B < 4 && instr.after[C] == (instr.before[A] | instr.before[B]))
+                    possibleCategories.Add(6);
+                else
+                    impossibleCategories.Add(6);
+                if (A < 4 && instr.after[C] == (instr.before[A] | B))
+                    possibleCategories.Add(7);
+                else
+                    impossibleCategories.Add(7);
+                if (A < 4 && instr.after[C] == instr.before[A])
+                    possibleCategories.Add(8);
+                else
+                    impossibleCategories.Add(8);
+                if (instr.after[C] == A)
+                    possibleCategories.Add(9);
+                else
+                    impossibleCategories.Add(9);
+                if ((B < 4 && A > instr.before[B] && instr.after[C] == 1) || instr.after[C] == 0)
+                    possibleCategories.Add(10);
+                else
+                    impossibleCategories.Add(10);
+                if ((A < 4 && instr.before[A] > B && instr.after[C] == 1) || instr.after[C] == 0)
+                    possibleCategories.Add(11);
+                else
+                    impossibleCategories.Add(11);
+                if ((A < 4 && B < 4 && instr.before[A] > instr.before[B] && instr.after[C] == 1) || instr.after[C] == 0)
+                    possibleCategories.Add(12);
+                else
+                    impossibleCategories.Add(12);
+                if ((B < 4 && A == instr.before[B] && instr.after[C] == 1) || instr.after[C] == 0)
+                    possibleCategories.Add(13);
+                else
+                    impossibleCategories.Add(13);
+                if ((A < 4 && instr.before[A] == B && instr.after[C] == 1) || instr.after[C] == 0)
+                    possibleCategories.Add(14);
+                else
+                    impossibleCategories.Add(14);
+                if ((A < 4 && B < 4 && instr.before[A] == instr.before[B] && instr.after[C] == 1) || instr.after[C] == 0)
+                    possibleCategories.Add(15);
+                else
+                    impossibleCategories.Add(15);
+                if (possibleCategories.Count > 2)
+                    p1++;
+                if (opinstrDict.ContainsKey(c))
+                {
+                    opinstrDict[c].possible.UnionWith(possibleCategories);
+                    opinstrDict[c].impossible.UnionWith(impossibleCategories);
+                }
+                else
+                    opinstrDict.Add(c, (possibleCategories, impossibleCategories));
+            }
+            var opinstrMap = new Dictionary<int, int>();
+            while (opinstrMap.Count != 16)
+            {
+                foreach (var instr in instructions)
+                {
+                    if (opinstrMap.ContainsKey(instr.opinstr.category))
+                        continue;
+                    var (possible, impossible) = opinstrDict[instr.opinstr.category];
+                    var possibilities = possible.Except(impossible).ToHashSet();
+                    if (possibilities.Count == 1)
+                        opinstrMap.Add(instr.opinstr.category, possibilities.First());
+                    else
+                        if ((possibilities = possibilities.Except(opinstrMap.Values.ToHashSet()).ToHashSet()).Count == 1)
+                            opinstrMap.Add(instr.opinstr.category, possibilities.First());
+                }
+            }
+            var testProg = input
+                .Split(Environment.NewLine + Environment.NewLine + Environment.NewLine)[1]
+                .Split(Environment.NewLine)
+                .Skip(1)    // why in the world is there a 0 as first line oO
+                .Select(line => line
+                    .Split(" ")
+                    .Select(num =>  int.Parse(num))
+                    .ToArray());
+            var registers = new int[4];
+            foreach (var instr in testProg)
+            {
+                switch (opinstrMap[instr[0]])
+                {
+                    case 0:
+                        registers[instr[3]] = registers[instr[1]] + registers[instr[2]];
+                        break;
+                    case 1:
+                        registers[instr[3]] = registers[instr[1]] +instr[2];
+                        break;
+                    case 2:
+                        registers[instr[3]] = registers[instr[1]] * registers[instr[2]];
+                        break;
+                    case 3:
+                        registers[instr[3]] = registers[instr[1]] * instr[2];
+                        break;
+                    case 4:
+                        registers[instr[3]] = registers[instr[1]] & registers[instr[2]];
+                        break;
+                    case 5:
+                        registers[instr[3]] = registers[instr[1]] & instr[2];
+                        break;
+                    case 6:
+                        registers[instr[3]] = registers[instr[1]] | registers[instr[2]];
+                        break;
+                    case 7:
+                        registers[instr[3]] = registers[instr[1]] | instr[2];
+                        break;
+                    case 8:
+                        registers[instr[3]] = registers[instr[1]];
+                        break;
+                    case 9:
+                        registers[instr[3]] = instr[1];
+                        break;
+                    case 10:
+                        registers[instr[3]] = instr[1] > registers[instr[2]] ? 1 : 0;
+                        break;
+                    case 11:
+                        registers[instr[3]] = registers[instr[1]] > instr[2] ? 1 : 0;
+                        break;
+                    case 12:
+                        registers[instr[3]] = registers[instr[1]] > registers[instr[2]] ? 1 : 0;
+                        break;
+                    case 13:
+                        registers[instr[3]] = instr[1] == registers[instr[2]] ? 1 : 0;
+                        break;
+                    case 14:
+                        registers[instr[3]] = registers[instr[1]] == instr[2] ? 1 : 0;
+                        break;
+                    case 15:
+                        registers[instr[3]] = registers[instr[1]] == registers[instr[2]] ? 1 : 0;
+                        break;
+                }
+            }
+            return (p1, registers[0]);
+        } // 0.0418s
     }
 }
