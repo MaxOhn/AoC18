@@ -1018,20 +1018,25 @@ namespace AdventOfCode18
             return (p1, registers[0]);
         } // 0.0418s
 
-        private static (long, long) Day17(string input)
+        private static (int, int) Day17(string input)
         {
             var slices = input
                 .Split(Environment.NewLine)
                 .Select(line =>
                 {
                     var split = line.Split(", ");
-                    var xPosStr = split[0].Contains('x') ? split[0].Substring(2, split[0].Length - 2) : split[1].Substring(2, split[1].Length - 2);
-                    var yPosStr = split[0].Contains('y') ? split[0].Substring(2, split[0].Length - 2) : split[1].Substring(2, split[1].Length - 2);
+                    var xPosStr = split[0].Contains('x')
+                        ? split[0].Substring(2, split[0].Length - 2)
+                        : split[1].Substring(2, split[1].Length - 2);
+                    var yPosStr = split[0].Contains('y')
+                        ? split[0].Substring(2, split[0].Length - 2)
+                        : split[1].Substring(2, split[1].Length - 2);
                     var xPos = new List<int>();
                     if (xPosStr.Contains('.'))
                     {
                         var limits = xPosStr.Split("..");
-                        xPos = Enumerable.Range(int.Parse(limits[0]), int.Parse(limits[1]) - int.Parse(limits[0]) + 1).ToList();
+                        xPos = Enumerable.Range(int.Parse(limits[0]), int.Parse(limits[1]) - int.Parse(limits[0]) + 1)
+                            .ToList();
                     }
                     else
                         xPos.Add(int.Parse(xPosStr));
@@ -1039,7 +1044,8 @@ namespace AdventOfCode18
                     if (yPosStr.Contains('.'))
                     {
                         var limits = yPosStr.Split("..");
-                        yPos = Enumerable.Range(int.Parse(limits[0]), int.Parse(limits[1]) - int.Parse(limits[0]) + 1).ToList();
+                        yPos = Enumerable.Range(int.Parse(limits[0]), int.Parse(limits[1]) - int.Parse(limits[0]) + 1)
+                            .ToList();
                     }
                     else
                         yPos.Add(int.Parse(yPosStr));
@@ -1061,51 +1067,41 @@ namespace AdventOfCode18
                 while (x < grid.Length && !grid[x][y].Equals('#') && !grid[x][y].Equals('~'))
                     grid[x++][y] = '|';
                 if (x == grid.Length)
-                {
-                    finishedOrigins.Add((source.x, y));
                     return false;
-                }
                 if (grid[x][y].Equals('#'))
-                {
-                    grid[--x][y] = '~';
-                    return true;
-                }
+                    x--;
                 while (true)
                 {
-                    int leftPush = y, rightPush = y;
-                    while ((grid[x + 1][leftPush].Equals('#') || grid[x + 1][leftPush].Equals('~')) && !grid[x][leftPush].Equals('#'))
-                        leftPush--;
-                    while ((grid[x+1][rightPush].Equals('#') || grid[x+1][rightPush].Equals('~')) && !grid[x][rightPush].Equals('#'))
-                        rightPush++;
-                    for (int i = 0; i < Math.Max(leftPush, rightPush); i++)
+                    int lPush = y, rPush = y;
+                    while ((grid[x + 1][lPush].Equals('#') || grid[x + 1][lPush].Equals('~')) && !grid[x][lPush].Equals('#'))
+                        lPush--;
+                    while ((grid[x + 1][rPush].Equals('#') || grid[x + 1][rPush].Equals('~')) && !grid[x][rPush].Equals('#'))
+                        rPush++;
+                    for (int i = 0; i < Math.Max(lPush, rPush); i++)
                     {
-                        if (y - i > leftPush && !grid[x][y - i].Equals('~'))
-                            if ((grid[x][y - i] = !grid[x][leftPush].Equals('#') || !grid[x][rightPush].Equals('#') ? '|' : '~').Equals('~'))
+                        if (y - i > lPush && !grid[x][y - i].Equals('~'))
+                            if ((grid[x][y - i] = !grid[x][lPush].Equals('#') || !grid[x][rPush].Equals('#') ? '|' : '~').Equals('~'))
                                 return true;
-                        if (y + i < rightPush && !grid[x][y + i].Equals('~'))
-                            if ((grid[x][y + i] = !grid[x][leftPush].Equals('#') || !grid[x][rightPush].Equals('#') ? '|' : '~').Equals('~'))
+                        if (y + i < rPush && !grid[x][y + i].Equals('~'))
+                            if ((grid[x][y + i] = !grid[x][lPush].Equals('#') || !grid[x][rPush].Equals('#') ? '|' : '~').Equals('~'))
                                 return true;
                     }
-                    if (!grid[x][leftPush].Equals('#'))
-                        if (!finishedOrigins.Contains((x, leftPush)) && addWater((x, leftPush)))
+                    if (!grid[x][lPush].Equals('#'))
+                        if (!finishedOrigins.Contains((x, lPush)) && addWater((x, lPush)))
                             return true;
                         else
-                            finishedOrigins.Add((x, leftPush));
-                    if (!grid[x][rightPush].Equals('#'))
-                        if (!finishedOrigins.Contains((x, rightPush)) && addWater((x, rightPush)))
+                            finishedOrigins.Add((x, lPush));
+                    if (!grid[x][rPush].Equals('#'))
+                        if (!finishedOrigins.Contains((x, rPush)) && addWater((x, rPush)))
                             return true;
                         else
-                            finishedOrigins.Add((x, rightPush));
-                    if (!grid[x][leftPush].Equals('#') || !grid[x][rightPush].Equals('#'))
+                            finishedOrigins.Add((x, rPush));
+                    if (!grid[x][lPush].Equals('#') || !grid[x][rPush].Equals('#'))
                         return false;
                     x--;
                 }
             }
             while (addWater((1, 500 - minY)));
-            for (int x = 0; x < grid.Length; x++)
-                for (int y = 1; y < grid[x].Length - 1; y++)
-                    if (grid[x][y].Equals('~') && grid[x][y - 1].Equals('|') && grid[x][y + 1].Equals('|'))
-                        grid[x][y] = '|';
             int p2 = grid.Select(line => line.Count(c => c.Equals('~'))).Sum();
             return (grid.Select(line => line.Count(c => c.Equals('|'))).Sum() + p2, p2);
         }
