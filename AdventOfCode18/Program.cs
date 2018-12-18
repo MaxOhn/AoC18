@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D17.txt"))
+            using (StreamReader sr = new StreamReader("../../../D18.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day17(sr.ReadToEnd());
+                var answer = Day18(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -517,14 +517,10 @@ namespace AdventOfCode18
             {
                 switch (dir)
                 {
-                    case '^':
-                        return (x, y - 1);
-                    case 'v':
-                        return (x, y + 1);
-                    case '>':
-                        return (x + 1, y);
-                    case '<':
-                        return (x - 1, y);
+                    case '^': return (x, y - 1);
+                    case 'v': return (x, y + 1);
+                    case '>': return (x + 1, y);
+                    case '<': return (x - 1, y);
                 }
                 throw new ArgumentException();
             }
@@ -1053,9 +1049,9 @@ namespace AdventOfCode18
                 });
             int maxX = slices.Max(line => line.x.Max()) + 1, maxY = slices.Max(line => line.y.Max()) + 1;
             int minX = slices.Min(line => line.x.Min()) - 1, minY = slices.Min(line => line.y.Min()) - 1;
-            var grid = new char[maxX-minX][];
-            for (int i = 0; i < maxX-minX; i++)
-                grid[i] = new char[maxY-minY];
+            var grid = new char[maxX - minX][];
+            for (int i = 0; i < maxX - minX; i++)
+                grid[i] = new char[maxY - minY];
             foreach (var slice in slices)
                 foreach (var x in slice.x)
                     foreach (var y in slice.y)
@@ -1101,9 +1097,79 @@ namespace AdventOfCode18
                     x--;
                 }
             }
-            while (addWater((1, 500 - minY)));
+            while (addWater((1, 500 - minY))) ;
             int p2 = grid.Select(line => line.Count(c => c.Equals('~'))).Sum();
             return (grid.Select(line => line.Count(c => c.Equals('|'))).Sum() + p2, p2);
-        }
-    } // 0.682s
+        } // 0.682s
+
+        private static (int, int) Day18(string input)
+        {
+            var area = input
+                .Split(Environment.NewLine)
+                .Select(line => line.ToArray())
+                .ToArray();
+            var seenAreas = new Dictionary<int, int>();
+            char[][] nextMinute()
+            {
+                var newArea = new char[area.Length][];
+                for (int x = 0; x < area.Length; x++)
+                    newArea[x] = new char[area[x].Length];
+                for (int x = 0; x < area.Length; x++)
+                {
+                    for (int y = 0; y < area[x].Length; y++)
+                    {
+                        int adjTree = 0, adjLumberyard = 0, adjOpen = 0;
+                        for (int i = -1; i <= 1; i++)
+                        {
+                            for (int j = -1; j <= 1; j++)
+                            {
+                                if ((i == 0 && i == j) || x + i < 0 || x + i >= area.Length || y + j < 0 || y + j >= area[x].Length)
+                                    continue;
+                                if (area[x + i][y + j].Equals('.'))
+                                    adjOpen++;
+                                else if (area[x + i][y + j].Equals('|'))
+                                    adjTree++;
+                                else
+                                    adjLumberyard++;
+                            }
+                        }
+                        if (area[x][y].Equals('.'))
+                            newArea[x][y] = adjTree >= 3 ? '|' : '.';
+                        else if (area[x][y].Equals('|'))
+                            newArea[x][y] = adjLumberyard >= 3 ? '#' : '|';
+                        else if (area[x][y].Equals('#'))
+                            newArea[x][y] = adjLumberyard >= 1 && adjTree >= 1 ? '#' : '.';
+                    }
+                }
+                return newArea;
+            }
+            // Mesmerizing *.*
+            /*
+            while (true)
+            {
+                for (int x = 0; x < area.Length; x++)
+                {
+                    Console.SetCursorPosition(0, x);
+                    Console.WriteLine(string.Join("", area[x]));
+                }
+                area = nextMinute();
+                Thread.Sleep(25);
+            }
+            //*/
+            int minuteCounter = 0;
+            for (; minuteCounter < 10; minuteCounter++)
+                area = nextMinute();
+            int p1 = area.Select(line => line.Count(c => c.Equals('|'))).Sum()
+                   * area.Select(line => line.Count(c => c.Equals('#'))).Sum();
+            for (; minuteCounter < 500; minuteCounter++)    // iterate sufficiently high
+                area = nextMinute();
+            while (true)
+            {
+                if ((minuteCounter++ % 28) == (1000000000 % 28))    // phase is 28
+                    return (p1, area.Select(line => line.Count(c => c.Equals('|'))).Sum()
+                       * area.Select(line => line.Count(c => c.Equals('#'))).Sum());
+                area = nextMinute();
+            }
+        } // 0.0523s
+    }
 }
