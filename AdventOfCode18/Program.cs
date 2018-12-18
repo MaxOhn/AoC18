@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace AdventOfCode18
 {
@@ -13,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D16.txt"))
+            using (StreamReader sr = new StreamReader("../../../D17.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day16(sr.ReadToEnd());
+                var answer = Day17(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -615,6 +616,223 @@ namespace AdventOfCode18
             return (p1, windowIndex);
         } // 0.576s
 
+        // heavy construction area, screw this puzzle :D
+        public static (int, int) Day15(string input)
+        {
+            input = @"#########
+#G..G..G#
+#.......#
+#.......#
+#G..E..G#
+#.......#
+#.......#
+#G..G..G#
+#########";
+
+            ((int, int), int) floodDistances(char[][] matrix, int sX, int sY, int tX, int tY)
+            {
+                var field = matrix.Select(line => line.Select(c => c + "").ToArray()).ToArray();
+                field[tX][tY] = "0";
+                bool foundTarget = false;
+                int currDist = 0;
+                var checkNext = new Dictionary<(int, int), int> { { (tX, tY), currDist++ } };
+                while (!foundTarget)
+                {
+                    var nextIter = new HashSet<(int, int)>();
+                    while (checkNext.Count > 0)
+                    {
+                        var ((cX, cY), dis) = checkNext.ElementAt(0);
+                        checkNext.Remove((cX, cY));
+                        if (field[cX + 1][cY].Equals(".") || (cX + 1 == sX && cY == sY))
+                        {
+                            field[cX + 1][cY] = currDist + "";
+                            nextIter.Add((cX + 1, cY));
+                        }
+                        if (field[cX - 1][cY].Equals(".") || (cX - 1 == sX && cY == sY))
+                        {
+                            field[cX - 1][cY] = currDist + "";
+                            nextIter.Add((cX - 1, cY));
+                        }
+                        if (field[cX][cY + 1].Equals(".") || (cX == sX && cY + 1 == sY))
+                        {
+                            field[cX][cY + 1] = currDist + "";
+                            nextIter.Add((cX, cY + 1));
+                        }
+                        if (field[cX][cY - 1].Equals(".") || (cX == sX && cY - 1 == sY))
+                        {
+                            field[cX][cY - 1] = currDist + "";
+                            nextIter.Add((cX, cY - 1));
+                        }
+                        if (nextIter.Contains((sX, sY)))
+                        {
+                            foundTarget = true;
+                            break;
+                        }
+                    }
+                    foreach (var pos in nextIter)
+                        checkNext.Add(pos, currDist);
+                    currDist++;
+                }
+
+                // TODO: sort by location if same distance
+                var nearestPos = ((-1, -1), 10000);
+                bool success;
+                if ((success = int.TryParse(field[sX + 1][sY], out int parsed)) && parsed < nearestPos.Item2)
+                    nearestPos = ((sX + 1, sY), parsed);
+                if ((success = int.TryParse(field[sX - 1][sY], out parsed)) && parsed < nearestPos.Item2)
+                    nearestPos = ((sX - 1, sY), parsed);
+                if ((success = int.TryParse(field[sX][sY + 1], out parsed)) && parsed < nearestPos.Item2)
+                    nearestPos = ((sX, sY + 1), parsed);
+                if ((success = int.TryParse(field[sX][sY - 1], out parsed)) && parsed < nearestPos.Item2)
+                    nearestPos = ((sX, sY - 1), parsed);
+                return nearestPos;
+            }
+
+            int ELF_HP = 200;
+            int ELF_ATTACK = 3;
+            int GOBLIN_HP = 200;
+            int GOBLIN_ATTACK = 3;
+
+            var map = input
+                .Split(Environment.NewLine)
+                .Select(line => line.ToArray())
+                .ToArray();
+            var elves = map
+                .Select((line, x) => line
+                    .Select((c, y) => c.Equals('E') ? (x, y) : (-1, -1))
+                    .Where(p => p.Item1 != -1).ToHashSet())
+                .Aggregate((total, line) => total.Union(line).ToHashSet())
+                .ToDictionary(coord => (x: coord.Item1, y: coord.Item2), _ => ELF_HP);
+            var goblins = map
+                .Select((line, x) => line
+                    .Select((c, y) => c.Equals('G') ? (x, y) : (-1, -1))
+                    .Where(p => p.Item1 != -1).ToHashSet())
+                .Aggregate((total, line) => total.Union(line).ToHashSet())
+                .ToDictionary(coord => (x: coord.Item1, y: coord.Item2), _ => GOBLIN_HP);
+
+            bool ongoing = true;
+            while (ongoing)
+            {
+                Console.WriteLine(string.Join("\n", map.Select(line => string.Join("", line))));
+                Console.WriteLine("-----------------------------------------------");
+                Thread.Sleep(1000);
+                var nextMap = new char[map.Length][];
+                for (int i = 0; i < map.Length; i++)
+                {
+                    var copiedLine = new char[map[i].Length];
+                    Array.Copy(map[i], copiedLine, map[i].Length);
+                    nextMap[i] = copiedLine;
+                }
+                for (int x = 0; x < map.Length; x++)
+                {
+                    for (int y = 0; y < map[x].Length; y++)
+                    {
+                        if (map[x][y].Equals('E') || map[x][y].Equals('G'))
+                        {
+                            if (goblins.Count == 0 || elves.Count == 0)
+                            {
+                                ongoing = false;
+                                break;
+                            }
+
+                            var adjToEnemy = new Dictionary<(int, int), ((int, int), int)> ();
+                            var destination = (-1, -1);
+                            if (map[x][y].Equals('E'))
+                            {
+                                if (map[x + 1][y].Equals('G'))
+                                    destination = (x + 1, y);
+                                else if (map[x - 1][y].Equals('G'))
+                                    destination = (x - 1, y);
+                                else if (map[x][y + 1].Equals('G'))
+                                    destination = (x, y + 1);
+                                else if (map[x][y - 1].Equals('G'))
+                                    destination = (x, y - 1);
+                                else
+                                {
+                                    foreach (var goblin in goblins.Keys)
+                                    {
+                                        int cX; int cY;
+                                        if (map[cX = goblin.x + 1][goblin.y].Equals('.') && !adjToEnemy.ContainsKey((cX, goblin.y)))
+                                            adjToEnemy.Add((cX, goblin.y), floodDistances(nextMap, x, y, cX, goblin.y));
+                                        if (map[cX = goblin.x - 1][goblin.y].Equals('.') && !adjToEnemy.ContainsKey((cX, goblin.y)))
+                                            adjToEnemy.Add((cX, goblin.y), floodDistances(nextMap, x, y, cX, goblin.y));
+                                        if (map[goblin.x][cY = goblin.y + 1].Equals('.') && !adjToEnemy.ContainsKey((goblin.x, cY)))
+                                            adjToEnemy.Add((goblin.x, cY), floodDistances(nextMap, x, y, goblin.x, cY));
+                                        if (map[goblin.x][cY = goblin.y - 1].Equals('.') && !adjToEnemy.ContainsKey((goblin.x, cY)))
+                                            adjToEnemy.Add((goblin.x, cY), floodDistances(nextMap, x, y, goblin.x, cY));
+                                    }
+                                    if (adjToEnemy.Count == 0)
+                                        continue;
+                                }
+                                if (destination.Item1 != -1)
+                                {
+                                    goblins[(x: destination.Item1, y: destination.Item2)] -= ELF_ATTACK;
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                if (map[x + 1][y].Equals('E'))
+                                    destination = (x + 1, y);
+                                else if (map[x - 1][y].Equals('E'))
+                                    destination = (x - 1, y);
+                                else if (map[x][y + 1].Equals('E'))
+                                    destination = (x, y + 1);
+                                else if (map[x][y - 1].Equals('E'))
+                                    destination = (x, y - 1);
+                                else
+                                {
+                                    foreach (var elf in elves.Keys)
+                                    {
+                                        int cX; int cY;
+                                        if (map[cX = elf.x + 1][elf.y].Equals('.') && !adjToEnemy.ContainsKey((cX, elf.y)))
+                                            adjToEnemy.Add((cX, elf.y), floodDistances(nextMap, x, y, cX, elf.y));
+                                        if (map[cX = elf.x - 1][elf.y].Equals('.') && !adjToEnemy.ContainsKey((cX, elf.y)))
+                                            adjToEnemy.Add((cX, elf.y), floodDistances(nextMap, x, y, cX, elf.y));
+                                        if (map[elf.x][cY = elf.y + 1].Equals('.') && !adjToEnemy.ContainsKey((elf.x, cY)))
+                                            adjToEnemy.Add((elf.x, cY), floodDistances(nextMap, x, y, elf.x, cY));
+                                        if (map[elf.x][cY = elf.y - 1].Equals('.') && !adjToEnemy.ContainsKey((elf.x, cY)))
+                                            adjToEnemy.Add((elf.x, cY), floodDistances(nextMap, x, y, elf.x, cY));
+                                    }
+                                    if (adjToEnemy.Count == 0)
+                                        continue;
+                                }
+                                if (destination.Item1 != -1)
+                                {
+                                    elves[(x: destination.Item1, y: destination.Item2)] -= GOBLIN_ATTACK;
+                                    continue;
+                                }
+                            }
+                            // TODO: sort by location if same distance
+                            destination = adjToEnemy
+                                .Aggregate((l, r) => l.Value.Item2 < r.Value.Item2 ? r : l)
+                                .Value
+                                .Item1;
+                            nextMap[destination.Item1][destination.Item2] = map[x][y];
+                            Console.WriteLine($"moving ({x},{y}) to ({destination.Item1},{destination.Item2})");
+                            if (map[x][y].Equals('E'))
+                            {
+                                elves.Add(destination, elves[(x, y)]);
+                                elves.Remove((x, y));
+                            }
+                            else
+                            {
+                                goblins.Add(destination, goblins[(x, y)]);
+                                goblins.Remove((x, y));
+                            }
+                            nextMap[x][y] = '.';
+                            Console.WriteLine(map[x][y]);
+                        }
+                    }
+                    if (!ongoing)
+                        break;
+                }
+                map = nextMap.ToArray();
+            }
+
+            return (0, 0);
+        }
+
         public static (int, int) Day16(string input)
         {
             var instructions = input
@@ -799,5 +1017,97 @@ namespace AdventOfCode18
             }
             return (p1, registers[0]);
         } // 0.0418s
-    }
+
+        private static (long, long) Day17(string input)
+        {
+            var slices = input
+                .Split(Environment.NewLine)
+                .Select(line =>
+                {
+                    var split = line.Split(", ");
+                    var xPosStr = split[0].Contains('x') ? split[0].Substring(2, split[0].Length - 2) : split[1].Substring(2, split[1].Length - 2);
+                    var yPosStr = split[0].Contains('y') ? split[0].Substring(2, split[0].Length - 2) : split[1].Substring(2, split[1].Length - 2);
+                    var xPos = new List<int>();
+                    if (xPosStr.Contains('.'))
+                    {
+                        var limits = xPosStr.Split("..");
+                        xPos = Enumerable.Range(int.Parse(limits[0]), int.Parse(limits[1]) - int.Parse(limits[0]) + 1).ToList();
+                    }
+                    else
+                        xPos.Add(int.Parse(xPosStr));
+                    var yPos = new List<int>();
+                    if (yPosStr.Contains('.'))
+                    {
+                        var limits = yPosStr.Split("..");
+                        yPos = Enumerable.Range(int.Parse(limits[0]), int.Parse(limits[1]) - int.Parse(limits[0]) + 1).ToList();
+                    }
+                    else
+                        yPos.Add(int.Parse(yPosStr));
+                    return (y: xPos, x: yPos);
+                });
+            int maxX = slices.Max(line => line.x.Max()) + 1, maxY = slices.Max(line => line.y.Max()) + 1;
+            int minX = slices.Min(line => line.x.Min()) - 1, minY = slices.Min(line => line.y.Min()) - 1;
+            var grid = new char[maxX-minX][];
+            for (int i = 0; i < maxX-minX; i++)
+                grid[i] = new char[maxY-minY];
+            foreach (var slice in slices)
+                foreach (var x in slice.x)
+                    foreach (var y in slice.y)
+                        grid[x - minX][y - minY] = '#';
+            var finishedOrigins = new HashSet<(int, int)>();
+            bool addWater((int x, int y) source)
+            {
+                var (x, y) = source;
+                while (x < grid.Length && !grid[x][y].Equals('#') && !grid[x][y].Equals('~'))
+                    grid[x++][y] = '|';
+                if (x == grid.Length)
+                {
+                    finishedOrigins.Add((source.x, y));
+                    return false;
+                }
+                if (grid[x][y].Equals('#'))
+                {
+                    grid[--x][y] = '~';
+                    return true;
+                }
+                while (true)
+                {
+                    int leftPush = y, rightPush = y;
+                    while ((grid[x + 1][leftPush].Equals('#') || grid[x + 1][leftPush].Equals('~')) && !grid[x][leftPush].Equals('#'))
+                        leftPush--;
+                    while ((grid[x+1][rightPush].Equals('#') || grid[x+1][rightPush].Equals('~')) && !grid[x][rightPush].Equals('#'))
+                        rightPush++;
+                    for (int i = 0; i < Math.Max(leftPush, rightPush); i++)
+                    {
+                        if (y - i > leftPush && !grid[x][y - i].Equals('~'))
+                            if ((grid[x][y - i] = !grid[x][leftPush].Equals('#') || !grid[x][rightPush].Equals('#') ? '|' : '~').Equals('~'))
+                                return true;
+                        if (y + i < rightPush && !grid[x][y + i].Equals('~'))
+                            if ((grid[x][y + i] = !grid[x][leftPush].Equals('#') || !grid[x][rightPush].Equals('#') ? '|' : '~').Equals('~'))
+                                return true;
+                    }
+                    if (!grid[x][leftPush].Equals('#'))
+                        if (!finishedOrigins.Contains((x, leftPush)) && addWater((x, leftPush)))
+                            return true;
+                        else
+                            finishedOrigins.Add((x, leftPush));
+                    if (!grid[x][rightPush].Equals('#'))
+                        if (!finishedOrigins.Contains((x, rightPush)) && addWater((x, rightPush)))
+                            return true;
+                        else
+                            finishedOrigins.Add((x, rightPush));
+                    if (!grid[x][leftPush].Equals('#') || !grid[x][rightPush].Equals('#'))
+                        return false;
+                    x--;
+                }
+            }
+            while (addWater((1, 500 - minY)));
+            for (int x = 0; x < grid.Length; x++)
+                for (int y = 1; y < grid[x].Length - 1; y++)
+                    if (grid[x][y].Equals('~') && grid[x][y - 1].Equals('|') && grid[x][y + 1].Equals('|'))
+                        grid[x][y] = '|';
+            int p2 = grid.Select(line => line.Count(c => c.Equals('~'))).Sum();
+            return (grid.Select(line => line.Count(c => c.Equals('|'))).Sum() + p2, p2);
+        }
+    } // 0.682s
 }
