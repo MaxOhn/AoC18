@@ -1172,14 +1172,13 @@ namespace AdventOfCode18
             }
         } // 0.0523s
 
-        private static (int, int) Day19(string input)   // screw part 2
+        private static (int, int) Day19(string input)
         {
-            var lines = input.
-                Split(Environment.NewLine)
+            var lines = input
+                .Split(Environment.NewLine)
                 .ToList();
             int ip = int.Parse(lines.First().Split(" ")[1]);
-            var instructions = lines
-                .Skip(1)
+            var instructions = lines.Skip(1)
                 .Select(line =>
                 {
                     var split = line.Split(" ");
@@ -1187,28 +1186,17 @@ namespace AdventOfCode18
                 }).ToArray();
             int run(bool p1)
             {
-                var r = new int[] { 0, 0, 0, 0, 0, 0 };
-                int printDelay = 10000;
-                int nextPrint = printDelay;
-                r[0] = p1 ? 0 : 1;
+                var r = new int[] { p1 ? 0 : 1, 0, 0, 0, 0, 0 };
                 while (r[ip] < instructions.Length)
                 {
                     var (op, A, B, C) = instructions[r[ip]];
-                    if (!p1)
-                        return 0;
-                    //    Console.WriteLine($"{op} {A} {B} {C} =>\t[{string.Join(", ", r)}]");
                     if (!p1 && r[ip] == 2 && r[5] != 0)
                     {
                         if (r[1] % r[5] == 0)
                             r[0] += r[5];
                         r[4] = 0;
                         r[3] = r[1];
-                        r[ip] = 12;
-                    }
-                    if (!p1 && r[0] > nextPrint)
-                    {
-                        Console.WriteLine($"{op} {A} {B} {C} =>\t[{string.Join(", ", r)}]");
-                        nextPrint += printDelay;
+                        r[ip] = 11;
                     }
                     switch (op)
                     {
@@ -1234,6 +1222,6 @@ namespace AdventOfCode18
                 return r[0];
             }
             return (run(true), run(false));
-        }
+        } // 2.59s
     }
 }
