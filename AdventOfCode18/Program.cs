@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D18.txt"))
+            using (StreamReader sr = new StreamReader("../../../D19.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day18(sr.ReadToEnd());
+                var answer = Day19(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -1171,5 +1171,69 @@ namespace AdventOfCode18
                 area = nextMinute();
             }
         } // 0.0523s
+
+        private static (int, int) Day19(string input)   // screw part 2
+        {
+            var lines = input.
+                Split(Environment.NewLine)
+                .ToList();
+            int ip = int.Parse(lines.First().Split(" ")[1]);
+            var instructions = lines
+                .Skip(1)
+                .Select(line =>
+                {
+                    var split = line.Split(" ");
+                    return (split[0], int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]));;
+                }).ToArray();
+            int run(bool p1)
+            {
+                var r = new int[] { 0, 0, 0, 0, 0, 0 };
+                int printDelay = 10000;
+                int nextPrint = printDelay;
+                r[0] = p1 ? 0 : 1;
+                while (r[ip] < instructions.Length)
+                {
+                    var (op, A, B, C) = instructions[r[ip]];
+                    if (!p1)
+                        return 0;
+                    //    Console.WriteLine($"{op} {A} {B} {C} =>\t[{string.Join(", ", r)}]");
+                    if (!p1 && r[ip] == 2 && r[5] != 0)
+                    {
+                        if (r[1] % r[5] == 0)
+                            r[0] += r[5];
+                        r[4] = 0;
+                        r[3] = r[1];
+                        r[ip] = 12;
+                    }
+                    if (!p1 && r[0] > nextPrint)
+                    {
+                        Console.WriteLine($"{op} {A} {B} {C} =>\t[{string.Join(", ", r)}]");
+                        nextPrint += printDelay;
+                    }
+                    switch (op)
+                    {
+                        case "addr": r[C] = r[A] + r[B]; break;
+                        case "addi": r[C] = r[A] + B; break;
+                        case "mulr": r[C] = r[A] * r[B]; break;
+                        case "muli": r[C] = r[A] * B; break;
+                        case "banr": r[C] = r[A] & r[B]; break;
+                        case "bani": r[C] = r[A] & B; break;
+                        case "borr": r[C] = r[A] | r[B]; break;
+                        case "bori": r[C] = r[A] | B; break;
+                        case "setr": r[C] = r[A]; break;
+                        case "seti": r[C] = A; break;
+                        case "gtir": r[C] = Convert.ToInt32(A > r[B]); break;
+                        case "gtri": r[C] = Convert.ToInt32(r[A] > B); break;
+                        case "gtrr": r[C] = Convert.ToInt32(r[A] > r[B]); break;
+                        case "eqir": r[C] = Convert.ToInt32(A == r[B]); break;
+                        case "eqri": r[C] = Convert.ToInt32(r[A] == B); break;
+                        case "eqrr": r[C] = Convert.ToInt32(r[A] == r[B]); break;
+                    }
+                    r[ip]++;
+                }
+                return r[0];
+            }
+            return (run(true), run(false));
+        }
     }
 }
