@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D19.txt"))
+            using (StreamReader sr = new StreamReader("../../../D20.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day19(sr.ReadToEnd());
+                var answer = Day20(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -853,11 +853,6 @@ namespace AdventOfCode18
                 int c = instr.opinstr.category, A = instr.opinstr.A, B = instr.opinstr.B, C = instr.opinstr.C;
                 var possibleCategories = new HashSet<int>();
                 var impossibleCategories = new HashSet<int>();
-                var changedOnlyC = Enumerable.Range(0, 4)
-                    .Where(i => i != C)
-                    .Any(i => instr.before[i] == instr.after[i]);
-                if (!changedOnlyC)
-                    continue;
                 if (A < 4 && B < 4 && instr.after[C] == instr.before[A] + instr.before[B])
                     possibleCategories.Add(0);
                 else
@@ -956,62 +951,30 @@ namespace AdventOfCode18
                     .Split(" ")
                     .Select(num =>  int.Parse(num))
                     .ToArray());
-            var registers = new int[4];
+            var r = new int[4];
             foreach (var instr in testProg)
             {
                 switch (opinstrMap[instr[0]])
                 {
-                    case 0:
-                        registers[instr[3]] = registers[instr[1]] + registers[instr[2]];
-                        break;
-                    case 1:
-                        registers[instr[3]] = registers[instr[1]] +instr[2];
-                        break;
-                    case 2:
-                        registers[instr[3]] = registers[instr[1]] * registers[instr[2]];
-                        break;
-                    case 3:
-                        registers[instr[3]] = registers[instr[1]] * instr[2];
-                        break;
-                    case 4:
-                        registers[instr[3]] = registers[instr[1]] & registers[instr[2]];
-                        break;
-                    case 5:
-                        registers[instr[3]] = registers[instr[1]] & instr[2];
-                        break;
-                    case 6:
-                        registers[instr[3]] = registers[instr[1]] | registers[instr[2]];
-                        break;
-                    case 7:
-                        registers[instr[3]] = registers[instr[1]] | instr[2];
-                        break;
-                    case 8:
-                        registers[instr[3]] = registers[instr[1]];
-                        break;
-                    case 9:
-                        registers[instr[3]] = instr[1];
-                        break;
-                    case 10:
-                        registers[instr[3]] = instr[1] > registers[instr[2]] ? 1 : 0;
-                        break;
-                    case 11:
-                        registers[instr[3]] = registers[instr[1]] > instr[2] ? 1 : 0;
-                        break;
-                    case 12:
-                        registers[instr[3]] = registers[instr[1]] > registers[instr[2]] ? 1 : 0;
-                        break;
-                    case 13:
-                        registers[instr[3]] = instr[1] == registers[instr[2]] ? 1 : 0;
-                        break;
-                    case 14:
-                        registers[instr[3]] = registers[instr[1]] == instr[2] ? 1 : 0;
-                        break;
-                    case 15:
-                        registers[instr[3]] = registers[instr[1]] == registers[instr[2]] ? 1 : 0;
-                        break;
+                    case 0: r[instr[3]] = r[instr[1]] + r[instr[2]]; break;
+                    case 1: r[instr[3]] = r[instr[1]] +instr[2]; break;
+                    case 2: r[instr[3]] = r[instr[1]] * r[instr[2]]; break;
+                    case 3: r[instr[3]] = r[instr[1]] * instr[2]; break;
+                    case 4: r[instr[3]] = r[instr[1]] & r[instr[2]]; break;
+                    case 5: r[instr[3]] = r[instr[1]] & instr[2]; break;
+                    case 6: r[instr[3]] = r[instr[1]] | r[instr[2]]; break;
+                    case 7: r[instr[3]] = r[instr[1]] | instr[2]; break;
+                    case 8: r[instr[3]] = r[instr[1]]; break;
+                    case 9: r[instr[3]] = instr[1]; break;
+                    case 10: r[instr[3]] = instr[1] > r[instr[2]] ? 1 : 0; break;
+                    case 11: r[instr[3]] = r[instr[1]] > instr[2] ? 1 : 0; break;
+                    case 12: r[instr[3]] = r[instr[1]] > r[instr[2]] ? 1 : 0; break;
+                    case 13: r[instr[3]] = instr[1] == r[instr[2]] ? 1 : 0; break;
+                    case 14: r[instr[3]] = r[instr[1]] == instr[2] ? 1 : 0; break;
+                    case 15: r[instr[3]] = r[instr[1]] == r[instr[2]] ? 1 : 0; break;
                 }
             }
-            return (p1, registers[0]);
+            return (p1, r[0]);
         } // 0.0418s
 
         private static (int, int) Day17(string input)
@@ -1182,7 +1145,7 @@ namespace AdventOfCode18
                 .Select(line =>
                 {
                     var split = line.Split(" ");
-                    return (split[0], int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]));;
+                    return (split[0], int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3])); ;
                 }).ToArray();
             int run(bool p1)
             {
@@ -1210,12 +1173,12 @@ namespace AdventOfCode18
                         case "bori": r[C] = r[A] | B; break;
                         case "setr": r[C] = r[A]; break;
                         case "seti": r[C] = A; break;
-                        case "gtir": r[C] = Convert.ToInt32(A > r[B]); break;
-                        case "gtri": r[C] = Convert.ToInt32(r[A] > B); break;
-                        case "gtrr": r[C] = Convert.ToInt32(r[A] > r[B]); break;
-                        case "eqir": r[C] = Convert.ToInt32(A == r[B]); break;
-                        case "eqri": r[C] = Convert.ToInt32(r[A] == B); break;
-                        case "eqrr": r[C] = Convert.ToInt32(r[A] == r[B]); break;
+                        case "gtir": r[C] = A > r[B] ? 1 : 0; break;
+                        case "gtri": r[C] = r[A] > B ? 1 : 0; break;
+                        case "gtrr": r[C] = r[A] > r[B] ? 1 : 0; break;
+                        case "eqir": r[C] = A == r[B] ? 1 : 0; break;
+                        case "eqri": r[C] = r[A] == B ? 1 : 0; break;
+                        case "eqrr": r[C] = r[A] == r[B] ? 1 : 0; break;
                     }
                     r[ip]++;
                 }
@@ -1223,5 +1186,36 @@ namespace AdventOfCode18
             }
             return (run(true), run(false));
         } // 2.59s
+
+        private static (int, int) Day20(string input)
+        {
+            var dir = new Dictionary<char, (int, int)>
+            {
+                { 'N', (-1, 0) },
+                { 'S', (1, 0) },
+                { 'W', (0, -1) },
+                { 'E', (0, 1) },
+            };
+            var pos = new Stack<(int, int)>();
+            var dist = new Dictionary<(int, int), int>();
+            int x = 0, y = 0, pX = 0, pY = 0;
+            foreach (var c in input.Skip(1).SkipLast(1))
+            {
+                switch (c)
+                {
+                    case '(': pos.Push((x, y)); break;
+                    case ')': (x, y) = pos.Pop(); break;
+                    case '|': (x, y) = pos.Peek(); break;
+                    default:
+                        var (dx, dy) = dir[c]; x += dx; y += dy;
+                        dist[(x, y)] = dist.ContainsKey((x, y))
+                            ? Math.Min(dist[(x, y)], dist[(pX, pY)])
+                            : dist.ContainsKey((pX, pY)) ? dist[(pX, pY)] + 1 : 1;
+                        break;
+                }
+                pX = x; pY = y;
+            }
+            return (dist.Values.Max(), dist.Count(kvp => kvp.Value >= 1000));
+        } // 0.0198s
     }
 }
