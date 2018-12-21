@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D20.txt"))
+            using (StreamReader sr = new StreamReader("../../../D21.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day20(sr.ReadToEnd());
+                var answer = Day21(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -1217,5 +1217,60 @@ namespace AdventOfCode18
             }
             return (dist.Values.Max(), dist.Count(kvp => kvp.Value >= 1000));
         } // 0.0198s
+
+        private static (int, int) Day21(string input)
+        {
+            var lines = input
+                .Split(Environment.NewLine)
+                .ToList();
+            int ip = int.Parse(lines.First().Split(" ")[1]);
+            var instructions = lines.Skip(1)
+                .Select(line =>
+                {
+                    var split = line.Split(" ");
+                    return (split[0], int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3])); ;
+                }).ToArray();
+            int run(bool p1)
+            {
+                var posValues = new HashSet<int>();
+                int prevReg = 0;
+                var r = new int[] { 0, 0, 0, 0, 0, 0 };
+                while (r[ip] < instructions.Length)
+                {
+                    var (op, A, B, C) = instructions[r[ip]];
+                    switch (op)
+                    {
+                        case "addr": r[C] = r[A] + r[B]; break;
+                        case "addi": r[C] = r[A] + B; break;
+                        case "mulr": r[C] = r[A] * r[B]; break;
+                        case "muli": r[C] = r[A] * B; break;
+                        case "banr": r[C] = r[A] & r[B]; break;
+                        case "bani": r[C] = r[A] & B; break;
+                        case "borr": r[C] = r[A] | r[B]; break;
+                        case "bori": r[C] = r[A] | B; break;
+                        case "setr": r[C] = r[A]; break;
+                        case "seti": r[C] = A; break;
+                        case "gtir": r[C] = A > r[B] ? 1 : 0; break;
+                        case "gtri": r[C] = r[A] > B ? 1 : 0; break;
+                        case "gtrr": r[C] = r[A] > r[B] ? 1 : 0; break;
+                        case "eqir": r[C] = A == r[B] ? 1 : 0; break;
+                        case "eqri": r[C] = r[A] == B ? 1 : 0; break;
+                        case "eqrr": r[C] = r[A] == r[B] ? 1 : 0; break;
+                    }
+                    if (r[ip] == 28)    // only instr 28 depends on r[0] (and r[2])
+                    {
+                        if (p1)
+                            return r[2];
+                        if (posValues.Contains(r[2]))
+                            return prevReg;
+                        prevReg = r[2];
+                        posValues.Add(r[2]);
+                    }
+                    r[ip]++;
+                }
+                return r[0];    // never reached
+            }
+            return (run(true), run(false));
+        } // 2:07.28s
     }
 }
