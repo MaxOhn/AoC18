@@ -1232,9 +1232,9 @@ namespace AdventOfCode18
                 }).ToArray();
             int run(bool p1)
             {
-                var posValues = new HashSet<int>();
+                var possibleValues = new HashSet<int>();
                 int prevReg = 0;
-                var r = new int[] { 0, 0, 0, 0, 0, 0 };
+                var r = new int[6];
                 while (r[ip] < instructions.Length)
                 {
                     var (op, A, B, C) = instructions[r[ip]];
@@ -1257,20 +1257,19 @@ namespace AdventOfCode18
                         case "eqri": r[C] = r[A] == B ? 1 : 0; break;
                         case "eqrr": r[C] = r[A] == r[B] ? 1 : 0; break;
                     }
-                    if (r[ip] == 28)    // only instr 28 depends on r[0] (and r[2])
+                    if (r[ip] == 28)    // only instruction 28 depends on r[0] (and r[2])
                     {
                         if (p1)
                             return r[2];
-                        if (posValues.Contains(r[2]))
+                        if (possibleValues.Contains(r[2]))
                             return prevReg;
-                        prevReg = r[2];
-                        posValues.Add(r[2]);
+                        possibleValues.Add(prevReg = r[2]);
                     }
                     r[ip]++;
                 }
                 return r[0];    // never reached
             }
             return (run(true), run(false));
-        } // 2:07.28s
+        } // 35.985s
     }
 }
