@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D21.txt"))
+            using (StreamReader sr = new StreamReader("../../../D22.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day21(sr.ReadToEnd());
+                var answer = Day22(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -177,14 +177,13 @@ namespace AdventOfCode18
         {
             int react(string l)
             {
-                for (int i = 0; i < l.Length - 1;)
+                for (int i = 0; i < l.Length - 1; i++)
                 {
                     if (l[i] != l[i + 1] && l[i].ToString().Equals(l[i + 1].ToString(), StringComparison.InvariantCultureIgnoreCase))
                     {
                         l = l.Remove(i, 2);
-                        i = Math.Max(0, i - 1);
+                        i = Math.Max(-1, i - 2);
                     }
-                    else i++;
                 }
                 return l.Length;
             }
@@ -927,20 +926,20 @@ namespace AdventOfCode18
                 else
                     opinstrDict.Add(c, (possibleCategories, impossibleCategories));
             }
-            var opinstrMap = new Dictionary<int, int>();
-            while (opinstrMap.Count != 16)
+            var opMap = new Dictionary<int, int>();
+            while (opMap.Count != 16)
             {
                 foreach (var instr in instructions)
                 {
-                    if (opinstrMap.ContainsKey(instr.opinstr.category))
+                    if (opMap.ContainsKey(instr.opinstr.category))
                         continue;
                     var (possible, impossible) = opinstrDict[instr.opinstr.category];
                     var possibilities = possible.Except(impossible).ToHashSet();
                     if (possibilities.Count == 1)
-                        opinstrMap.Add(instr.opinstr.category, possibilities.First());
+                        opMap.Add(instr.opinstr.category, possibilities.First());
                     else
-                        if ((possibilities = possibilities.Except(opinstrMap.Values.ToHashSet()).ToHashSet()).Count == 1)
-                            opinstrMap.Add(instr.opinstr.category, possibilities.First());
+                        if ((possibilities = possibilities.Except(opMap.Values).ToHashSet()).Count == 1)
+                            opMap.Add(instr.opinstr.category, possibilities.First());
                 }
             }
             var testProg = input
@@ -954,7 +953,7 @@ namespace AdventOfCode18
             var r = new int[4];
             foreach (var instr in testProg)
             {
-                switch (opinstrMap[instr[0]])
+                switch (opMap[instr[0]])
                 {
                     case 0: r[instr[3]] = r[instr[1]] + r[instr[2]]; break;
                     case 1: r[instr[3]] = r[instr[1]] +instr[2]; break;
@@ -1271,5 +1270,71 @@ namespace AdventOfCode18
             }
             return (run(true), run(false));
         } // 35.985s
+
+        private static (int, int) Day22(string input)
+        {
+            int depth = int.Parse(input.Split(Environment.NewLine)[0].Split(" ")[1]);
+            var targetSplit = input
+                .Split(Environment.NewLine)[1]
+                .Split(" ")[1]
+                .Split(",");
+            (int x, int y) target = (int.Parse(targetSplit[0]), int.Parse(targetSplit[1]));
+            var cave = new Dictionary<(int, int), int>();
+            int getErosion(int x, int y)
+            {
+                if (cave.TryGetValue((x, y), out int erosion))
+                    return erosion;
+                if ((x, y) == (0, 0) || (x, y) == target)
+                    erosion = 0;
+                else if (y == 0)
+                    erosion = x * 16807;
+                else if (x == 0)
+                    erosion = y * 48271;
+                else
+                    erosion = getErosion(x - 1, y) * getErosion(x, y - 1);
+                erosion = (erosion + depth) % 20183;
+                cave.Add((x, y), erosion);
+                return erosion;
+            }
+            int getType(int x, int y) => getErosion(x, y) % 3;
+            IEnumerable<int> allowedTools(int x, int y) => Enumerable.Range(0, 3).Where(n => n != getType(x, y));
+            int run()
+            {
+                var Q = new Priority_Queue.SimplePriorityQueue<(int, int, int, int)>();
+                var seen = new HashSet<(int, int, int)>();
+                Q.Enqueue((0, 0, 1, 0), 0);
+                var dist = new Dictionary<(int, int, int, int), int> { { (0, 0, 1, 0), 0 } };
+                (int x, int y)[] next = { (-1, 0), (1, 0), (0, -1), (0, 1) };
+                while (true)
+                {
+                    (int cX, int cY, int cT, int wait) = Q.Dequeue();
+                    int cD = dist[(cX, cY, cT, wait)];
+                    if (wait > 0)
+                    {
+                        if (wait != 1 || seen.Add((cX, cY, cT)))
+                            Q.Enqueue((cX, cY, cT, wait - 1), dist[(cX, cY, cT, wait - 1)] = cD + 1);
+                        continue;
+                    }
+                    if ((cX, cY) == target && cT == 1)
+                        return cD;
+                    foreach ((int sX, int sY) in next)
+                    {
+                        (int nX, int nY) = (cX + sX, cY + sY);
+                        if (nX < 0 || nY < 0)
+                            continue;
+                        if (allowedTools(nX, nY).Contains(cT) && seen.Add((nX, nY, cT)))
+                            Q.Enqueue((nX, nY, cT, 0), dist[(nX, nY, cT, 0)] = cD + 1);
+                    }
+                    foreach (int oT in allowedTools(cX, cY))
+                        Q.Enqueue((cX, cY, oT, 6), dist[(cX, cY, oT, 6)] = cD + 1);
+                }
+            }
+            var p1 = Enumerable.Range(0, target.x + 1)
+                .Select(x => Enumerable.Range(0, target.y + 1)
+                    .Select(y => getType(x, y))
+                    .Sum())
+                .Sum();
+            return (p1, run());
+        } // 19.512s
     }
 }
