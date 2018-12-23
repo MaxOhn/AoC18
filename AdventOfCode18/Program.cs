@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D22.txt"))
+            using (StreamReader sr = new StreamReader("../../../D23.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day22(sr.ReadToEnd());
+                var answer = Day23(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -1336,5 +1336,65 @@ namespace AdventOfCode18
                 .Sum();
             return (p1, run());
         } // 19.512s
+
+        private static (int, long) Day23(string input)
+        {
+            var nanobots = input
+                .Split(Environment.NewLine)
+                .Select(line =>
+                {
+                    var split = line.Split(", ");
+                    var posArr = split[0]
+                        .Substring(5, split[0].Length - 6)
+                        .Split(",")
+                        .Select(num => long.Parse(num))
+                        .ToArray();
+                    return new { pos = (x: posArr[0], y: posArr[1], z: posArr[2]), r = long.Parse(split[1].Substring(2)) };
+                });
+            var sBot = nanobots.Aggregate((max, next) => max.r < next.r ? next : max);
+            int p1 = nanobots
+                .Where(bot => Math.Abs(bot.pos.x - sBot.pos.x) + Math.Abs(bot.pos.y - sBot.pos.y) + Math.Abs(bot.pos.z - sBot.pos.z) <= sBot.r)
+                .Count();
+            var xs = (min: nanobots.Min(bot => bot.pos.x), max: nanobots.Max(bot => bot.pos.x));
+            var ys = (min: nanobots.Min(bot => bot.pos.y), max: nanobots.Max(bot => bot.pos.y));
+            var zs = (min: nanobots.Min(bot => bot.pos.z), max: nanobots.Max(bot => bot.pos.z));
+            long dist = 1;
+            while (dist < xs.max - xs.min)
+                dist *= 2;
+            while (true)
+            {
+                int maxInRange = 0;
+                var best = (x: 0L, y: 0L, z: 0L);
+                for (long x = xs.min; x <= xs.max; x += dist)
+                {
+                    for (long y = ys.min; y <= ys.max; y += dist)
+                    {
+                        for (long z = zs.min; z <= zs.max; z += dist)
+                        {
+                            int currInRange = nanobots
+                                .Where(bot => (Math.Abs(x - bot.pos.x) + Math.Abs(y - bot.pos.y) + Math.Abs(z - bot.pos.z) - bot.r) / dist <= 0)
+                                .Count();
+                            if (currInRange > maxInRange)
+                            {
+                                maxInRange = currInRange;
+                                best = (x, y, z);
+                            }
+                            else if (currInRange == maxInRange)
+                                if (Math.Abs(x) + Math.Abs(y) + Math.Abs(z) < Math.Abs(best.x) + Math.Abs(best.y) + Math.Abs(best.z))
+                                    best = (x, y, z);
+                        }
+                    }
+                }
+                if (dist == 1)
+                    return (p1, best.x + best.y + best.z);
+                else
+                {
+                    xs = (best.x - dist, best.x + dist);
+                    ys = (best.y - dist, best.y + dist);
+                    zs = (best.z - dist, best.z + dist);
+                    dist /= 2;
+                }
+            }
+        } // 3.363s
     }
 }
