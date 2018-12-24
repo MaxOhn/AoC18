@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D15.txt"))
+            using (StreamReader sr = new StreamReader("../../../D24.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day15(sr.ReadToEnd());
+                var answer = Day24(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -611,7 +611,7 @@ namespace AdventOfCode18
             return (p1, windowIndex);
         } // 0.576s
 
-        // heavy construction area, screw this puzzle :D
+        // heavy construction area :D
         public static (int, int) Day15(string input)
         {
             /*
@@ -1055,7 +1055,7 @@ namespace AdventOfCode18
                         goblins[goblin] = nextGoblins[goblin];
                 }
             }
-            int p1 = elves.Count == 0 ? goblins.Sum(g => g.Value) * round : elves.Sum(e => e.Value) * round;
+            int p1 = (elves.Count == 0 ? goblins.Sum(g => g.Value) : elves.Sum(e => e.Value)) * round;
 
             Console.WriteLine($"amount elves: {elves.Count} - amount goblins: {goblins.Count} - round: {round} - p1: {p1}");
 
@@ -1630,5 +1630,160 @@ namespace AdventOfCode18
                 }
             }
         } // 3.363s
+
+        private static (int, int) Day24(string input)   // i am disgusted by my solution /shrug
+        {
+            var parts = input
+                .Split(Environment.NewLine + Environment.NewLine)
+                .Select(p =>
+                {
+                    return p.Split(Environment.NewLine)
+                        .Skip(1)
+                        .Select((line, i) =>
+                        {
+                            var words = line.Split(" ");
+                            var immunity = new List<string>();
+                            var weakness = new List<string>();
+                            int wordIdx = 7;
+                            if (words[7].First().Equals('('))
+                            {
+                                while (!words[wordIdx - 1].Last().Equals(')'))
+                                {
+                                    if (words[wordIdx].Equals("immune") || words[wordIdx].Substring(1).Equals("immune"))
+                                    {
+                                        wordIdx += 2;
+                                        do
+                                            immunity.Add(words[wordIdx].Substring(0, words[wordIdx].Length - 1));
+                                        while (words[wordIdx++].Last().Equals(','));
+                                    }
+                                    if (words[wordIdx].Equals("weak") || words[wordIdx].Substring(1).Equals("weak"))
+                                    {
+                                        wordIdx += 2;
+                                        do
+                                            weakness.Add(words[wordIdx].Substring(0, words[wordIdx].Length - 1));
+                                        while (words[wordIdx++].Last().Equals(','));
+                                    }
+                                }
+                            }
+                            wordIdx += 5;
+                            return
+                            (
+                                idx: i + 1,
+                                units: int.Parse(words[0]),
+                                hp: int.Parse(words[4]),
+                                initiative: int.Parse(words.Last()),
+                                ad: int.Parse(words[wordIdx++]),
+                                type: words[wordIdx],
+                                weakness,
+                                immunity
+                            );
+                        });
+                });
+            var immuneSystem = parts.First()
+                .Select(g => (group: "IS", g.idx, g.units, g.hp, g.initiative, g.ad, g.type, g.weakness, g.immunity))
+                .ToList();
+            var infection = parts.Last()
+                .Select(g => (group: "IF", g.idx, g.units, g.hp, g.initiative, g.ad, g.type, g.weakness, g.immunity))
+                .ToList();
+            int effectivePower((string group, int idx, int units, int hp, int initiative, int ad, string type, List<string> weakness, List<string> immunity) group) =>
+                group.units * group.ad;
+            (string group, int idx, int units, int hp, int initiative, int ad, string type, List<string> weakness, List<string> immunity) getGroup((string group, int idx) shortG)
+            {
+                if (shortG.group.Equals("IS"))
+                    return immuneSystem.First(g => g.idx == shortG.idx);
+                else
+                    return infection.First(g => g.idx == shortG.idx);
+            }
+            int getDamage((string group, int idx) att, (string group, int idx) def)
+            {
+                var attacker = getGroup(att);
+                var defender = getGroup(def);
+                var damage = effectivePower(attacker);
+                if (defender.immunity.Contains(attacker.type))
+                    damage = 0;
+                else if (defender.weakness.Contains(attacker.type))
+                    damage *= 2;
+                return damage;
+            }
+            void fight()
+            {
+                while (immuneSystem.Count() > 0 && infection.Count() > 0)
+                {
+                    var groups = immuneSystem
+                        .Concat(infection)
+                        .ToList()
+                        .OrderByDescending(g => effectivePower(g))
+                        .ThenByDescending(g => g.initiative);
+                    var targets = new Dictionary<(string group, int idx), (string group, int idx)>();
+                    foreach (var attacker in groups)
+                    {
+                        var target = new List<(string group, int idx)>();
+                        var maxDamage = 0;
+                        foreach (var defender in (immuneSystem.Contains(attacker) ? infection : immuneSystem).Except(targets.Values.Select(v => getGroup(v))))
+                        {
+                            var damage = effectivePower(attacker);
+                            if (defender.immunity.Contains(attacker.type))
+                                damage = 0;
+                            else if (defender.weakness.Contains(attacker.type))
+                                damage *= 2;
+                            if (damage == 0)
+                                continue;
+                            else if (damage == maxDamage)
+                                target.Add((defender.group, defender.idx));
+                            else if (damage > maxDamage)
+                            {
+                                target.Clear();
+                                target.Add((defender.group, defender.idx));
+                                maxDamage = damage;
+                            }
+                        }
+                        if (target.Count > 0)
+                            targets[(attacker.group, attacker.idx)] = (target
+                                .OrderByDescending(g => effectivePower(getGroup(g)))
+                                .ThenByDescending(g => getGroup(g).initiative)
+                                .First());
+                    }
+                    if (targets.Count == 0)
+                        immuneSystem.Clear();
+                    var attackers = groups
+                        .OrderByDescending(g => g.initiative)
+                        .ToArray();
+                    for (int i = 0; i < attackers.Length; i++)
+                    {
+                        var attacker = attackers[i];
+                        if (attacker.units < 0 || !targets.ContainsKey((attacker.group, attacker.idx)))
+                            continue;
+                        var (group, idx, units, hp, initiative, ad, type, weakness, immunity) = getGroup(targets[(attacker.group, attacker.idx)]);
+                        int lostUnits = Math.Min(getDamage((attacker.group, attacker.idx), targets[(attacker.group, attacker.idx)]) / hp, getGroup(targets[(attacker.group, attacker.idx)]).units);
+                        var updatedDefender = (group, idx, units: units - lostUnits, hp, initiative, ad, type, weakness, immunity);
+                        if (immuneSystem.Contains(attacker))
+                            infection = infection.Select(g => g == getGroup(targets[(attacker.group, attacker.idx)]) ? updatedDefender : g).ToList();
+                        else
+                            immuneSystem = immuneSystem.Select(g => g == getGroup(targets[(attacker.group, attacker.idx)]) ? updatedDefender : g).ToList();
+                        var defenderIdx = Array.FindIndex(attackers, defender => (defender.group, defender.idx) == targets[(attacker.group, attacker.idx)]);
+                        attackers[defenderIdx].units = attackers[defenderIdx].units - lostUnits;
+                    }
+                    immuneSystem = immuneSystem
+                        .Where(group => group.units > 0)
+                        .ToList();
+                    infection = infection
+                        .Where(group => group.units > 0)
+                        .ToList();
+                }
+            }
+            fight();
+            int p1 = (immuneSystem.Count() > 0 ? immuneSystem : infection).Sum(g => g.units), boost = 1;
+            while (true)
+            {
+                immuneSystem = parts.First()
+                    .Select(g => (group: "IS", g.idx, g.units, g.hp, g.initiative, ad: g.ad + boost, g.type, g.weakness, g.immunity))
+                    .ToList();
+                infection = parts.Last().Select(g => (group: "IF", g.idx, g.units, g.hp, g.initiative, g.ad, g.type, g.weakness, g.immunity)).ToList();
+                fight();
+                if (immuneSystem.Count() > 0)
+                    return (p1, immuneSystem.Sum(g => g.units));
+                boost++;
+            }
+        } // 4.944s
     }
 }
