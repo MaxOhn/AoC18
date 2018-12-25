@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D24.txt"))
+            using (StreamReader sr = new StreamReader("../../../D25.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day24(sr.ReadToEnd());
+                var answer = Day25(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -1687,12 +1687,12 @@ namespace AdventOfCode18
                 .ToList();
             int effectivePower((string group, int idx, int units, int hp, int initiative, int ad, string type, List<string> weakness, List<string> immunity) group) =>
                 group.units * group.ad;
-            (string group, int idx, int units, int hp, int initiative, int ad, string type, List<string> weakness, List<string> immunity) getGroup((string group, int idx) shortG)
+            (string group,int idx,int units,int hp,int initiative,int ad,string type,List<string> weakness,List<string> immunity) getGroup((string g, int i) shortG)
             {
-                if (shortG.group.Equals("IS"))
-                    return immuneSystem.First(g => g.idx == shortG.idx);
+                if (shortG.g.Equals("IS"))
+                    return immuneSystem.First(group => group.idx == shortG.i);
                 else
-                    return infection.First(g => g.idx == shortG.idx);
+                    return infection.First(group => group.idx == shortG.i);
             }
             int getDamage((string group, int idx) att, (string group, int idx) def)
             {
@@ -1744,7 +1744,10 @@ namespace AdventOfCode18
                                 .First());
                     }
                     if (targets.Count == 0)
+                    {
                         immuneSystem.Clear();
+                        break;
+                    }
                     var attackers = groups
                         .OrderByDescending(g => g.initiative)
                         .ToArray();
@@ -1754,7 +1757,10 @@ namespace AdventOfCode18
                         if (attacker.units < 0 || !targets.ContainsKey((attacker.group, attacker.idx)))
                             continue;
                         var (group, idx, units, hp, initiative, ad, type, weakness, immunity) = getGroup(targets[(attacker.group, attacker.idx)]);
-                        int lostUnits = Math.Min(getDamage((attacker.group, attacker.idx), targets[(attacker.group, attacker.idx)]) / hp, getGroup(targets[(attacker.group, attacker.idx)]).units);
+                        int lostUnits = Math.Min(
+                            getDamage((attacker.group, attacker.idx), targets[(attacker.group, attacker.idx)]) / hp,
+                            getGroup(targets[(attacker.group, attacker.idx)]).units
+                        );
                         var updatedDefender = (group, idx, units: units - lostUnits, hp, initiative, ad, type, weakness, immunity);
                         if (immuneSystem.Contains(attacker))
                             infection = infection.Select(g => g == getGroup(targets[(attacker.group, attacker.idx)]) ? updatedDefender : g).ToList();
@@ -1778,12 +1784,57 @@ namespace AdventOfCode18
                 immuneSystem = parts.First()
                     .Select(g => (group: "IS", g.idx, g.units, g.hp, g.initiative, ad: g.ad + boost, g.type, g.weakness, g.immunity))
                     .ToList();
-                infection = parts.Last().Select(g => (group: "IF", g.idx, g.units, g.hp, g.initiative, g.ad, g.type, g.weakness, g.immunity)).ToList();
+                infection = parts.Last()
+                    .Select(g => (group: "IF", g.idx, g.units, g.hp, g.initiative, g.ad, g.type, g.weakness, g.immunity))
+                    .ToList();
                 fight();
                 if (immuneSystem.Count() > 0)
                     return (p1, immuneSystem.Sum(g => g.units));
                 boost++;
             }
         } // 4.944s
+
+        private static (int, int) Day25(string input)
+        {
+            var fixedpoints = input
+                .Split(Environment.NewLine)
+                .Select(line => line
+                    .Split(",")
+                    .Select(num => int.Parse(num)).ToArray())
+                .Select(line => (X: line[0], Y: line[1], Z: line[2], T: line[3]))
+                .ToArray();
+            var p1 = 0;
+            var allTried = new List<int>();
+            while (true)
+            {
+                var tried = new List<int>();
+                var pointsToCheck = new Queue<int>();
+                for (var i = 0; i < fixedpoints.Count(); i++)
+                {
+                    if (!allTried.Contains(i))
+                    {
+                        pointsToCheck.Enqueue(i);
+                        break;
+                    }
+                }
+                while (pointsToCheck.Count > 0)
+                {
+                    var current = pointsToCheck.Dequeue();
+                    if (allTried.Contains(current))
+                        continue;
+                    tried.Add(current);
+                    allTried.Add(current);
+                    for (var i = 0; i < fixedpoints.Count(); i++)
+                        if (!tried.Contains(i) && !allTried.Contains(i) && GetDistance(fixedpoints[i], fixedpoints[current]) <= 3)
+                            pointsToCheck.Enqueue(i);
+                }
+                if (tried.Count == 0)
+                    break;
+                p1++;
+            }
+            return (p1, 0);
+            int GetDistance((int X, int Y, int Z, int T) A, (int X, int Y, int Z, int T) B) =>
+                Math.Abs(A.X - B.X) + Math.Abs(A.Y - B.Y) + Math.Abs(A.Z - B.Z) + Math.Abs(A.T - B.T);
+        }
     }
 }
