@@ -14,11 +14,11 @@ namespace AdventOfCode18
     {
         static void Main(string[] args)
         {
-            using (StreamReader sr = new StreamReader("../../../D25.txt"))
+            using (StreamReader sr = new StreamReader("../../../D15.txt"))
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                var answer = Day25(sr.ReadToEnd());
+                var answer = Day15(sr.ReadToEnd());
                 sw.Stop();
                 Console.WriteLine($"Solution: {answer} [{sw.Elapsed}]");
             }
@@ -611,94 +611,58 @@ namespace AdventOfCode18
             return (p1, windowIndex);
         } // 0.576s
 
-        // heavy construction area :D
         public static (int, int) Day15(string input)
         {
-            /*
-            // Example 1
-            input =
-@"#######
-#.G...#
-#...EG#
-#.#.#G#
-#..G#E#
-#.....#
-####### ";
-            //*/
-            ///*
-            // Example 2
-            input =
-@"#######
-#G..#E#
-#E#E.E#
-#G.##.#
-#...#E#
-#...E.#
-####### ";
-            //*/
-            /*
-            // Example 3
-            input =
-@"#######
-#E..EG#
-#.#G.E#
-#E.##E#
-#G..#.#
-#..E#.#
-####### ";
-            //*/
-            /*
-            // Example 4
-            input =
-@"#######
-#E.G#.#
-#.#G..#
-#G.#.G#
-#G..#.#
-#...E.#
-####### ";
-            //*/
-            /*
-            // Example 5
-            input =
-@"#######
-#.E...#
-#.#..G#
-#.###.#
-#E#G#G#
-#...#G#
-####### ";
-            //*/
-            /*
-            // Example 6
-            input =
-@"#########
-#G......#
-#.E.#...#
-#..##..G#
-#...##..#
-#...#...#
-#.G...G.#
-#.....G.#
-######### ";
-            //*/
+            var printing = false;
+            var delay = 0;
+            void printMap(char[][] field, HashSet<((int x, int y) pos, int hp)> e, HashSet<((int x, int y) pos, int hp)> g, int round)
+            {
+                //if (!printing)
+                //{
+                //    Thread.Sleep(delay);
+                //    Console.SetCursorPosition(0, 0);
+                //}
+                Console.WriteLine((round == 0 ? "\n\tInitially" : $"\n\tAfter {round} round") + (round > 1 ? "s" : "") + ":");
+
+                for (int x = 0; x < field.Length; x++)
+                {
+                    if (!printing)
+                    {
+                        Console.SetCursorPosition(0, x + 2);
+                        Console.WriteLine("\t\t\t\t\t\t\t\t\t\t\t\t\t");
+                        Console.SetCursorPosition(0, x + 2);
+                    }
+                    string line = "\t";
+                    var units = new List<string>();
+                    for (int y = 0; y < field[x].Length; y++)
+                    {
+                        line += field[x][y];
+                        if (field[x][y].Equals('E'))
+                            units.Add($"E({e.First(u => u.pos == (x, y)).hp})");
+                        else if (field[x][y].Equals('G'))
+                            units.Add($"G({g.First(u => u.pos == (x, y)).hp})");
+                    }
+                    line += $"\t{string.Join(", ", units)}";
+                    Console.WriteLine(line);
+                }
+            }
+
             (int x, int y)[] next = { (1, 0), (0, 1), (0, -1), (-1, 0) };
 
             // Return a position next to (sX, sY) and a distance such that this distance is the shortest to reach (tX, tY)
             ((int, int), int) floodDistances(char[][] matrix, int sX, int sY, int tX, int tY)
             {
+                if (sX == tX && sY == tY)
+                    return ((sX, sY), 0);
                 var field = matrix
                     .Select(line => line.Select(c => c + "")
                         .ToArray())
                     .ToArray();
-                if (!field[tX][tY].Equals("."))
-                    return ((sX, sY), int.MaxValue);
                 field[tX][tY] = "0";
-                bool foundTarget = false;
                 int currDist = 0;
                 var checkNext = new Dictionary<(int, int), int> { { (tX, tY), currDist++ } };
                 var counter = matrix.Length * matrix[0].Length;
-                while (!foundTarget && counter-- > 0)
+                while (counter-- > 0)
                 {
                     var nextIter = new HashSet<(int, int)>();
                     while (checkNext.Count > 0)
@@ -714,353 +678,234 @@ namespace AdventOfCode18
                             }
                         }
                         if (nextIter.Contains((sX, sY)))
-                        {
-                            foundTarget = true;
                             break;
-                        }
                     }
+                    if (nextIter.Contains((sX, sY)))
+                        break;
                     foreach (var pos in nextIter)
                         checkNext.Add(pos, currDist);
                     currDist++;
                 }
                 if (counter == 0)
                     return ((sX, sY), int.MaxValue);
-                var nearest = (pos: (x: int.MaxValue, y: int.MaxValue), dist: int.MaxValue);
+                var nearest = (pos: (x: sX, y: sY), dist: int.MaxValue);
                 foreach (var (nX, nY) in next)
                     if (int.TryParse(field[sX + nX][sY + nY], out int parsed) && parsed <= nearest.dist)
                         nearest = ((sX + nX, sY + nY), parsed);
-                //Console.WriteLine($"suggest ({sX},{sY}) to ({nearest.pos.x},{nearest.pos.y}) [{nearest.dist}]");
-                //Console.WriteLine($"{string.Join("\n", field.Select(line => string.Join("", line)))}\n-------------------");
                 return nearest;
             }
 
-            int ELF_HP = 200;
-            int ELF_ATTACK = 3;
-            int GOBLIN_HP = 200;
-            int GOBLIN_ATTACK = 3;
-
-            var map = input
-                .Split(Environment.NewLine)
-                .Select(line => line.ToArray())
-                .ToArray();
-            var elves = map
-                .Select((line, x) => line
-                    .Select((c, y) => c.Equals('E') ? (x, y) : (-1, -1))
-                    .Where(p => p.Item1 != -1).ToHashSet())
-                .Aggregate((total, line) => total.Union(line).ToHashSet())
-                .ToDictionary(coord => (x: coord.Item1, y: coord.Item2), _ => ELF_HP);
-            var goblins = map
-                .Select((line, x) => line
-                    .Select((c, y) => c.Equals('G') ? (x, y) : (-1, -1))
-                    .Where(p => p.Item1 != -1).ToHashSet())
-                .Aggregate((total, line) => total.Union(line).ToHashSet())
-                .ToDictionary(coord => (x: coord.Item1, y: coord.Item2), _ => GOBLIN_HP);
-            int round = 0;
-            bool ongoing = true;
-            while (ongoing)
+            int play(int ELF_ATTACK)
             {
-                ///*
-                // Print state of current round
-                Console.WriteLine($"------- ROUND {round} -------");
-                Console.WriteLine(string.Join("\n", map.Select(line => string.Join("", line))));
-                Console.WriteLine($"elves:\n\t{string.Join("\n\t", elves.Select(kvp => $"({kvp.Key.x},{kvp.Key.y}) -> {kvp.Value}"))}");
-                Console.WriteLine($"goblins:\n\t{string.Join("\n\t", goblins.Select(kvp => $"({kvp.Key.x},{kvp.Key.y}) -> {kvp.Value}"))}");
-                //Thread.Sleep(500);
-                //*/
+                int ELF_HP = 200;
+                int GOBLIN_HP = 200;
+                int GOBLIN_ATTACK = 3;
 
-                // Prepare this round's structures
-                var nextMap = new char[map.Length][];
-                var nextElves = new Dictionary<(int x, int y), int>();
-                var nextGoblins = new Dictionary<(int x, int y), int>();
-                var moved = new Dictionary<(int x, int y), (int x, int y)>();
-                for (int i = 0; i < map.Length; i++)
-                {
-                    var copiedLine = new char[map[i].Length];
-                    Array.Copy(map[i], copiedLine, map[i].Length);
-                    nextMap[i] = copiedLine;
-                }
+                var map = input
+                    .Split(Environment.NewLine)
+                    .Select(line => line.ToArray())
+                    .ToArray();
+                var elves = map
+                    .Select((line, x) => line
+                        .Select((c, y) => c.Equals('E') ? (x, y) : (x: -1, y: -1))
+                        .Where(p => p.x != -1).ToHashSet())
+                    .Aggregate((total, line) => total.Union(line).ToHashSet())
+                    .Select(coord => (pos: coord, hp: ELF_HP))
+                    .ToHashSet();
+                var goblins = map
+                    .Select((line, x) => line
+                        .Select((c, y) => c.Equals('G') ? (x, y) : (x: -1, y: -1))
+                        .Where(p => p.x != -1).ToHashSet())
+                    .Aggregate((total, line) => total.Union(line).ToHashSet())
+                    .Select(coord => (pos: coord, hp: GOBLIN_HP))
+                    .ToHashSet();
+                //if (!printing)
+                //    Thread.Sleep(delay * 10);
+                //printMap(map, elves, goblins, 0);
 
-                // Go over map
-                for (int x = 0; x < map.Length; x++)
+                int rounds = 0;
+                bool ongoing = true;
+                while (ongoing)
                 {
-                    for (int y = 0; y < map[x].Length; y++)
+                    // Prepare this round's structures
+                    var nextElves = elves.ToHashSet();
+                    var nextGoblins = goblins.ToHashSet();
+                    var nextMap = new char[map.Length][];
+                    for (int i = 0; i < map.Length; i++)
                     {
-                        // Proceed if current pos is elf or goblin
-                        if (map[x][y].Equals('E') || map[x][y].Equals('G'))
+                        var copiedLine = new char[map[i].Length];
+                        Array.Copy(map[i], copiedLine, map[i].Length);
+                        nextMap[i] = copiedLine;
+                    }
+
+                    // Go over map
+                    for (int x = 1; x < map.Length - 1; x++)
+                    {
+                        for (int y = 1; y < map[x].Length - 1; y++)
                         {
-                            // Has the battle ended?
-                            if (goblins.Count == 0 || elves.Count == 0)
+                            // Proceed if current pos is elf or goblin
+                            if (map[x][y].Equals('E') || map[x][y].Equals('G'))
                             {
-                                ongoing = false;
-                                break;
-                            }
-
-                            //Console.WriteLine($"curr: map[{x}][{y}]={map[x][y]}");
-
-                            var adjToOpponent = new Dictionary<(int x, int y), ((int x, int y) pos, int dist)> ();
-                            var dest = (x: -1, y: -1);
-
-                            // Current pos is elf
-                            if (map[x][y].Equals('E'))
-                            {
-                                // Get the goblin neighbor with the lowest HP, top-to-bottom then left-to-right
-                                foreach (var (nX, nY) in next)
-                                    if (map[x + nX][y + nY].Equals('G') && (!goblins.TryGetValue(dest, out int hpGoblin) || hpGoblin >= goblins[(x + nX, y + nY)]))
-                                        dest = (x + nX, y + nY);
-
-                                // If there is none, calculate paths to all goblins
-                                if (dest.x == -1)
+                                // Has the battle ended?
+                                if (nextGoblins.Count == 0 || nextElves.Count == 0)
                                 {
-                                    foreach (var goblin in goblins.Keys)
-                                    {
-                                        // For each neighboring pos of the goblin
-                                        int cX; int cY;
-                                        foreach ((int nX, int nY) in next)
-                                        {
-                                            // Can the current elf move there and is it not yet considered?
-                                            cX = goblin.x + nX; cY = goblin.y + nY;
-                                            if (cX >= 0 && cY >= 0
-                                                    && cX < map.Length && cY < map[cX].Length
-                                                    && map[cX][cY].Equals('.') && !adjToOpponent.ContainsKey((cX, cY)))
-
-                                                // Save path
-                                                adjToOpponent.Add((cX, cY), floodDistances(nextMap, x, y, cX, cY));
-                                        }
-                                    }
-
-                                    adjToOpponent = adjToOpponent
-                                        .Where(kvp => kvp.Value.dist < int.MaxValue)
-                                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-                                    // If no paths found, dont move
-                                    if (adjToOpponent.Count == 0)
-                                    {
-                                        nextElves[(x, y)] = elves[(x, y)];
-                                        moved[(x, y)] = (x, y);
-                                        continue;
-                                    }
-                                }
-
-                                // There is a goblin neighbor
-                                else
-                                {
-                                    // Add the current elf to nextElves
-                                    if (!nextElves.TryGetValue((x, y), out int hpElf))
-                                        nextElves[(x, y)] = elves[(x, y)];
-
-                                    // Decrease destionation goblin's HP
-                                    if (nextGoblins.TryGetValue(dest, out int hpGoblin))
-                                        nextGoblins[dest] -= ELF_ATTACK;
-                                    else
-                                        nextGoblins[dest] = goblins[dest] - ELF_ATTACK;
-
-                                    // If destination goblin has <=0 HP, let it die
-                                    if (nextGoblins[dest] <= 0)
-                                    {
-                                        map[dest.x][dest.y] = '.';
-                                        nextMap[dest.x][dest.y] = '.';
-                                        nextGoblins.Remove(dest);
-                                        if (moved.TryGetValue(dest, out var origin))
-                                            goblins.Remove(origin);
-                                        else
-                                            goblins.Remove(dest);
-                                    }
-
-                                    // Make no move
-                                    moved[(x, y)] = (x, y);
+                                    ongoing = false;
+                                    x = map.Length - 1;
+                                    y = map[x].Length - 1;
                                     continue;
                                 }
-                            }
 
-                            // Current pos is goblin
-                            else
-                            {
-                                // Get the elf neighbor with the lowest HP, top-to-bottom then left-to-right
-                                foreach (var (nX, nY) in next)
-                                    if (map[x + nX][y + nY].Equals('E') && (!elves.TryGetValue(dest, out int hpElf) || hpElf >= elves[(x + nX, y + nY)]))
-                                        dest = (x + nX, y + nY);
+                                var oppChar = map[x][y].Equals('E') ? 'G' : 'E';
+                                var opponents = (map[x][y].Equals('E') ? nextGoblins : nextElves);
+                                var allyChar = map[x][y].Equals('E') ? 'E' : 'G';
+                                var allies = (map[x][y].Equals('E') ? nextElves : nextGoblins);
 
-                                // If there is none, calculate paths to all elves
-                                if (dest.x == -1)
+                                //
+                                // MOVE
+                                //
+
+                                var moveDest = (x, y);
+                                var adjToOpponent = new Dictionary<(int x, int y), ((int x, int y) pos, int dist)>();
+
+                                // Try finding shortest path to any opponent
+                                foreach (var opponent in opponents.Select(o => o.pos))
                                 {
-                                    foreach (var elf in elves.Keys)
+                                    // For each neighboring pos of the opponent
+                                    int cX; int cY;
+                                    foreach ((int nX, int nY) in next)
                                     {
-                                        // For each neighboring pos of the goblin
-                                        int cX; int cY;
-                                        foreach ((int nX, int nY) in next)
-                                        {
-                                            // Can the current goblin move there and is it not yet considered?
-                                            cX = elf.x + nX; cY = elf.y + nY;
-                                            if (cX >= 0 && cY >= 0
-                                                    && cX < map.Length && cY < map[cX].Length
-                                                    && map[cX][cY].Equals('.') && !adjToOpponent.ContainsKey((cX, cY)))
+                                        cX = opponent.x + nX; cY = opponent.y + nY;
 
-                                                // Save path
-                                                adjToOpponent.Add((cX, cY), floodDistances(nextMap, x, y, cX, cY));
-                                        }
-                                    }
+                                        // Is it a valid position?
+                                        if (cX >= 0 && cY >= 0 && cX < map.Length && cY < map[cX].Length
 
-                                    adjToOpponent = adjToOpponent
-                                        .Where(kvp => kvp.Value.pos.x < int.MaxValue)
-                                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                                                // Can the current creature move there?
+                                                && (nextMap[cX][cY].Equals('.') || (cX == x && cY == y))
 
-                                    // If no paths found, dont move
-                                    if (adjToOpponent.Count == 0)
-                                    {
-                                        nextGoblins[(x, y)] = goblins[(x, y)];
-                                        moved[(x, y)] = (x, y);
-                                        continue;
+                                                // Is it not yet considered?
+                                                && !adjToOpponent.ContainsKey((cX, cY))
+                                                )
+
+                                            // Save path
+                                            adjToOpponent.Add((cX, cY), floodDistances(nextMap, x, y, cX, cY));
                                     }
                                 }
 
-                                // There is an elf neighbor
+
+                                // Sort paths by dist > x > y and choose the shortest (if any paths were added)
+                                try
+                                {
+                                    moveDest = adjToOpponent.ContainsKey((x, y)) ? (x, y) :
+                                        adjToOpponent.OrderBy(kvp => kvp.Value.dist)
+                                        .ThenBy(kvp => kvp.Key.x)
+                                        .ThenBy(kvp => kvp.Key.y)
+                                        .First().Value.pos;
+                                }
+                                catch (InvalidOperationException) { }
+
+                                // Update the current creature's position
+                                allies = allies.Select(a => a.pos == (x, y) ? (pos: moveDest, a.hp) : a).ToHashSet();
+
+                                // Update nextMap
+                                nextMap[x][y] = '.';
+                                nextMap[moveDest.x][moveDest.y] = allyChar;
+
+                                //
+                                // ATTACK
+                                //
+
+                                var ATTACK_DAMAGE = map[x][y].Equals('E') ? ELF_ATTACK : GOBLIN_ATTACK;
+                                var attackDest = (moveDest.x, moveDest.y);
+
+                                // Check all neighboring positions
+                                foreach (var (nX, nY) in next)
+                                {
+                                    var currLowestHP = opponents.Select(o => o.pos).Contains(attackDest) ? opponents.First(o => o.pos == attackDest).hp : int.MaxValue;
+
+                                    // If the neighbor is an opponent
+                                    if (nextMap[moveDest.x + nX][moveDest.y + nY].Equals(oppChar)
+
+                                            // And the already selected opponent does not have fewer HP than the current neighbor
+                                            && (currLowestHP >= opponents.First(o => o.pos == (moveDest.x + nX, moveDest.y + nY)).hp))
+
+                                        // Select the current neighbor as next destionation
+                                        attackDest = (moveDest.x + nX, moveDest.y + nY);
+                                }
+
+                                // If there is a neighbor to attack
+                                if (attackDest != (moveDest.x, moveDest.y))
+                                {
+                                    // Keep track of elf deaths for part 2
+                                    bool elfDied = false;
+
+                                    // Decrease target's HP
+                                    opponents = opponents.Select(o =>
+                                        {
+                                            if (o.pos != attackDest)
+                                                return o;
+                                            int updateHP = o.hp - ATTACK_DAMAGE;
+
+                                        // If it has <=0 HP, it dies
+                                        if (updateHP <= 0)
+                                            {
+                                                if (oppChar.Equals('E'))
+                                                    elfDied = true;
+                                                map[attackDest.x][attackDest.y] = '.';
+                                                nextMap[attackDest.x][attackDest.y] = '.';
+                                            }
+                                            return (o.pos, hp: updateHP);
+                                        })
+                                        .Where(o => o.hp > 0)
+                                        .ToHashSet();
+
+                                    // Check for part 2
+                                    if (elfDied && ELF_ATTACK > 3)
+                                        return 0;
+
+                                    if (opponents.Count == 0)
+                                        ongoing = false;
+                                }
+
+                                // Update actual elf & golbin structures
+                                if (map[x][y].Equals('E'))
+                                {
+                                    nextElves = allies.ToHashSet();
+                                    nextGoblins = opponents.ToHashSet();
+                                }
                                 else
                                 {
-                                    // Add the current goblin to nextGoblins
-                                    if (!nextGoblins.TryGetValue((x, y), out int hpGoblin))
-                                        nextGoblins[(x, y)] = goblins[(x, y)];
-
-                                    // Decrease destionation elf's HP
-                                    if (nextElves.TryGetValue((dest.x, dest.y), out int hpElf))
-                                        nextElves[dest] -= GOBLIN_ATTACK;
-                                    else
-                                        nextElves[dest] = elves[dest] - GOBLIN_ATTACK;
-
-                                    // If destination elf has <=0 HP, let it die
-                                    if (nextElves[dest] <= 0)
-                                    {
-                                        map[dest.x][dest.y] = '.';
-                                        nextMap[dest.x][dest.y] = '.';
-                                        nextElves.Remove(dest);
-                                        if (moved.TryGetValue(dest, out var origin))
-                                            elves.Remove(origin);
-                                        else
-                                            elves.Remove(dest);
-                                    }
-
-                                    // Make no move
-                                    moved[(x, y)] = (x, y);
-                                    continue;
-                                }
-                            }
-
-                            // Sort paths by dist > x > y
-                            adjToOpponent = adjToOpponent.OrderBy(kvp => kvp.Value.dist)
-                                .ThenBy(kvp => kvp.Value.pos.x)
-                                .ThenBy(kvp => kvp.Value.pos.y)
-                                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-                            // Choose the shortest path
-                            dest = adjToOpponent.First().Value.pos;
-
-                            // If current pos has elf, add it to nextElves
-                            if (map[x][y].Equals('E'))
-                                nextElves.Add(dest, elves[(x, y)]);
-
-                            // If current pos has goblin, add it to nextGoblins
-                            else
-                                nextGoblins.Add(dest, goblins[(x, y)]);
-
-                            // Save move
-                            moved[dest] = (x, y);
-
-                            // Update nextMap
-                            nextMap[dest.x][dest.y] = map[x][y];
-                            nextMap[x][y] = '.';
-
-                            var attackDest = (x: -1, y: -1);
-
-                            // Try attacking after moving
-                            if (nextMap[dest.x][dest.y].Equals('E'))
-                            {
-                                // Get the goblin neighbor with the lowest HP, top-to-bottom then left-to-right
-                                foreach (var (nX, nY) in next)
-                                    if (map[dest.x + nX][dest.y + nY].Equals('G')
-                                            && (!goblins.TryGetValue(attackDest, out int hpGoblin) || hpGoblin >= goblins[(attackDest.x + nX, attackDest.y + nY)]))
-                                        attackDest = (dest.x + nX, dest.y + nY);
-
-                                // There is a goblin neighbor
-                                if (attackDest.x != -1)
-                                {
-                                    // Decrease destionation goblin's HP
-                                    if (nextGoblins.TryGetValue(dest, out int hpGoblin))
-                                        nextGoblins[attackDest] -= ELF_ATTACK;
-                                    else
-                                        nextGoblins[attackDest] = goblins[attackDest] - ELF_ATTACK;
-
-                                    // If destination goblin has <=0 HP, let it die
-                                    if (nextGoblins[attackDest] <= 0)
-                                    {
-                                        map[attackDest.x][attackDest.y] = '.';
-                                        nextMap[attackDest.x][attackDest.y] = '.';
-                                        nextGoblins.Remove(attackDest);
-                                        if (moved.TryGetValue(attackDest, out var origin))
-                                            goblins.Remove(origin);
-                                        else
-                                            goblins.Remove(attackDest);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // Get the elf neighbor with the lowest HP, top-to-bottom then left-to-right
-                                foreach (var (nX, nY) in next)
-                                    if (map[dest.x + nX][dest.y + nY].Equals('E')
-                                            && (!elves.TryGetValue(attackDest, out int hpElf) || hpElf >= elves[(attackDest.x + nX, attackDest.y + nY)]))
-                                        attackDest = (dest.x + nX, dest.y + nY);
-
-                                // There is an elf neighbor
-                                if (attackDest.x != -1)
-                                {
-                                    // Decrease destionation elf's HP
-                                    if (nextElves.TryGetValue(attackDest, out int hpElf))
-                                        nextElves[attackDest] -= GOBLIN_ATTACK;
-                                    else
-                                        nextElves[attackDest] = elves[attackDest] - GOBLIN_ATTACK;
-
-                                    // If destination goblin has <=0 HP, let it die
-                                    if (nextElves[attackDest] <= 0)
-                                    {
-                                        map[attackDest.x][attackDest.y] = '.';
-                                        nextMap[attackDest.x][attackDest.y] = '.';
-                                        nextElves.Remove(attackDest);
-                                        if (moved.TryGetValue(attackDest, out var origin))
-                                            elves.Remove(origin);
-                                        else
-                                            elves.Remove(attackDest);
-                                    }
+                                    nextElves = opponents.ToHashSet();
+                                    nextGoblins = allies.ToHashSet();
                                 }
                             }
                         }
+
+                        // Increment round counter if valid
+                        if (x == map.Length - 2 && elves.Count > 0 && goblins.Count > 0)
+                            rounds++;
                     }
 
-                    // Has the battle ended?
-                    if (!ongoing)
-                        break;
-                }
+                    // Update the map, elves, and goblins
+                    map = nextMap.ToArray();
+                    elves = nextElves.ToHashSet();
+                    goblins = nextGoblins.ToHashSet();
 
-                // Update the map, elves, and goblins
-                map = nextMap.ToArray();
-                if (ongoing)
-                {
-                    round++;
-                    elves = nextElves;
-                    goblins = nextGoblins;
+                    // Print state of current round
+                    //printMap(map, elves, goblins, rounds);
                 }
-                else
-                {
-                    foreach (var elf in nextElves.Keys)
-                        elves[elf] = nextElves[elf];
-                    foreach (var goblin in nextGoblins.Keys)
-                        goblins[goblin] = nextGoblins[goblin];
-                }
+                int outcome = (elves.Count == 0 ? goblins.Sum(g => g.hp) : elves.Sum(e => e.hp)) * rounds;
+                //string winner = elves.Count > 0 ? "Elves" : "Goblins";
+                //Console.WriteLine($"\n\tCombat ends after {rounds} full rounds");
+                //Console.WriteLine($"\t{winner} win with {outcome / rounds} hit points left");
+                //Console.WriteLine($"\tOutcome: {rounds} * {outcome / rounds} = {outcome}\n\n\n");
+                return outcome;
             }
-            int p1 = (elves.Count == 0 ? goblins.Sum(g => g.Value) : elves.Sum(e => e.Value)) * round;
-
-            Console.WriteLine($"amount elves: {elves.Count} - amount goblins: {goblins.Count} - round: {round} - p1: {p1}");
-
-            return (p1, 0);
-        }
+            int currAttack = 3;
+            int p1 = play(currAttack++), p2 = 0;
+            while (p2 == 0)
+                p2 = play(currAttack++);
+            return (p1, p2);
+        } // 24.022s
 
         public static (int, int) Day16(string input)
         {
@@ -1697,11 +1542,11 @@ namespace AdventOfCode18
             int getDamage((string group, int idx) att, (string group, int idx) def)
             {
                 var attacker = getGroup(att);
-                var defender = getGroup(def);
+                var (group, idx, units, hp, initiative, ad, type, weakness, immunity) = getGroup(def);
                 var damage = effectivePower(attacker);
-                if (defender.immunity.Contains(attacker.type))
+                if (immunity.Contains(attacker.type))
                     damage = 0;
-                else if (defender.weakness.Contains(attacker.type))
+                else if (weakness.Contains(attacker.type))
                     damage *= 2;
                 return damage;
             }
@@ -1719,21 +1564,21 @@ namespace AdventOfCode18
                     {
                         var target = new List<(string group, int idx)>();
                         var maxDamage = 0;
-                        foreach (var defender in (immuneSystem.Contains(attacker) ? infection : immuneSystem).Except(targets.Values.Select(v => getGroup(v))))
+                        foreach (var (group,idx,units,hp,initiative,ad,type,weakness,immunity) in (immuneSystem.Contains(attacker)?infection:immuneSystem).Except(targets.Values.Select(v=>getGroup(v))))
                         {
                             var damage = effectivePower(attacker);
-                            if (defender.immunity.Contains(attacker.type))
+                            if (immunity.Contains(attacker.type))
                                 damage = 0;
-                            else if (defender.weakness.Contains(attacker.type))
+                            else if (weakness.Contains(attacker.type))
                                 damage *= 2;
                             if (damage == 0)
                                 continue;
                             else if (damage == maxDamage)
-                                target.Add((defender.group, defender.idx));
+                                target.Add((group, idx));
                             else if (damage > maxDamage)
                             {
                                 target.Clear();
-                                target.Add((defender.group, defender.idx));
+                                target.Add((group, idx));
                                 maxDamage = damage;
                             }
                         }
