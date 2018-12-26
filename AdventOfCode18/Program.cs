@@ -727,9 +727,7 @@ namespace AdventOfCode18
                 bool ongoing = true;
                 while (ongoing)
                 {
-                    // Prepare this round's structures
-                    var nextElves = elves.ToHashSet();
-                    var nextGoblins = goblins.ToHashSet();
+                    // Prepare this round's map
                     var nextMap = new char[map.Length][];
                     for (int i = 0; i < map.Length; i++)
                     {
@@ -747,7 +745,7 @@ namespace AdventOfCode18
                             if (map[x][y].Equals('E') || map[x][y].Equals('G'))
                             {
                                 // Has the battle ended?
-                                if (nextGoblins.Count == 0 || nextElves.Count == 0)
+                                if (goblins.Count == 0 || elves.Count == 0)
                                 {
                                     ongoing = false;
                                     x = map.Length - 1;
@@ -756,9 +754,9 @@ namespace AdventOfCode18
                                 }
 
                                 var oppChar = map[x][y].Equals('E') ? 'G' : 'E';
-                                var opponents = (map[x][y].Equals('E') ? nextGoblins : nextElves);
+                                var opponents = (map[x][y].Equals('E') ? goblins : elves);
                                 var allyChar = map[x][y].Equals('E') ? 'E' : 'G';
-                                var allies = (map[x][y].Equals('E') ? nextElves : nextGoblins);
+                                var allies = (map[x][y].Equals('E') ? elves : goblins);
 
                                 //
                                 // MOVE
@@ -790,7 +788,6 @@ namespace AdventOfCode18
                                             adjToOpponent.Add((cX, cY), floodDistances(nextMap, x, y, cX, cY));
                                     }
                                 }
-
 
                                 // Sort paths by dist > x > y and choose the shortest (if any paths were added)
                                 try
@@ -862,21 +859,14 @@ namespace AdventOfCode18
                                     if (elfDied && ELF_ATTACK > 3)
                                         return 0;
 
+                                    // Check if any units are left
                                     if (opponents.Count == 0)
                                         ongoing = false;
                                 }
 
                                 // Update actual elf & golbin structures
-                                if (map[x][y].Equals('E'))
-                                {
-                                    nextElves = allies.ToHashSet();
-                                    nextGoblins = opponents.ToHashSet();
-                                }
-                                else
-                                {
-                                    nextElves = opponents.ToHashSet();
-                                    nextGoblins = allies.ToHashSet();
-                                }
+                                elves = map[x][y].Equals('E') ? allies : opponents;
+                                goblins = map[x][y].Equals('E') ? opponents : allies;
                             }
                         }
 
@@ -885,10 +875,8 @@ namespace AdventOfCode18
                             rounds++;
                     }
 
-                    // Update the map, elves, and goblins
+                    // Update the map
                     map = nextMap.ToArray();
-                    elves = nextElves.ToHashSet();
-                    goblins = nextGoblins.ToHashSet();
 
                     // Print state of current round
                     //printMap(map, elves, goblins, rounds);
@@ -1641,7 +1629,7 @@ namespace AdventOfCode18
 
         private static (int, int) Day25(string input)
         {
-            var fixedpoints = input
+            var points = input
                 .Split(Environment.NewLine)
                 .Select(line => line
                     .Split(",")
@@ -1654,7 +1642,7 @@ namespace AdventOfCode18
             {
                 var tried = new List<int>();
                 var pointsToCheck = new Queue<int>();
-                for (var i = 0; i < fixedpoints.Count(); i++)
+                for (var i = 0; i < points.Count(); i++)
                 {
                     if (!allTried.Contains(i))
                     {
@@ -1669,8 +1657,8 @@ namespace AdventOfCode18
                         continue;
                     tried.Add(current);
                     allTried.Add(current);
-                    for (var i = 0; i < fixedpoints.Count(); i++)
-                        if (!tried.Contains(i) && !allTried.Contains(i) && GetDistance(fixedpoints[i], fixedpoints[current]) <= 3)
+                    for (var i = 0; i < points.Count(); i++)
+                        if (!tried.Contains(i) && !allTried.Contains(i) && GetDistance(points[i], points[current]) <= 3)
                             pointsToCheck.Enqueue(i);
                 }
                 if (tried.Count == 0)
